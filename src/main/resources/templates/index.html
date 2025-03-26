@@ -449,7 +449,7 @@
     let isRunning = false;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize CodeMirror
+
         codeEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
             mode: 'text/x-java',
             lineNumbers: true,
@@ -464,51 +464,43 @@
             scrollbarStyle: null
         });
 
-        // Update character count on change
         codeEditor.on('change', function() {
             updateCharCount();
         });
         updateCharCount();
 
-        // Set up event listeners
         document.getElementById('run-button').addEventListener('click', compileAndRun);
         document.getElementById('fixed-run-button').addEventListener('click', compileAndRun);
         document.getElementById('clear-button').addEventListener('click', clearEditor);
         document.getElementById('save-button').addEventListener('click', saveSnippet);
 
-        // Theme change handler
         document.getElementById('theme-select').addEventListener('change', function() {
             const theme = this.value;
             codeEditor.setOption('theme', theme);
 
-            // Set theme class on editor container
             const editorContainer = document.getElementById('editor-container');
             editorContainer.className = 'editor-area'; // Reset classes
             editorContainer.classList.add('theme-' + theme);
         });
 
-        // Setup tab clicking
         document.querySelectorAll('.custom-tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 switchTab(this.getAttribute('data-tab'));
             });
         });
 
-        // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
-            // F9 to run code
+
             if (e.key === 'F9') {
                 e.preventDefault();
                 compileAndRun();
             }
 
-            // Ctrl+S to save
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
                 saveSnippet();
             }
 
-            // Ctrl+K to clear
             if (e.ctrlKey && e.key === 'k') {
                 e.preventDefault();
                 clearEditor();
@@ -538,10 +530,8 @@
         const icon = document.getElementById('status-icon');
         const messageEl = document.getElementById('status-message');
 
-        // Set message
         messageEl.textContent = message;
 
-        // Set icon based on status
         if (success) {
             icon.innerHTML = `
                     <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -558,10 +548,8 @@
             toast.classList.remove('border-primary-500/50');
         }
 
-        // Show toast with animation
         toast.classList.add('show');
 
-        // Hide after delay
         setTimeout(() => {
             toast.classList.remove('show');
         }, 3000);
@@ -584,8 +572,6 @@
         document.getElementById('compilation-time').textContent = '-';
         document.getElementById('execution-time').textContent = '-';
         document.getElementById('memory-usage').textContent = '-';
-
-        // Reset progress bars
         setProgress('compilation-progress', 0);
         setProgress('execution-progress', 0);
         setProgress('memory-progress', 0);
@@ -596,8 +582,6 @@
 
         isRunning = true;
         const sourceCode = codeEditor.getValue();
-
-        // Update UI to show loading state
         const runBtn = document.getElementById('run-button');
         const fixedRunBtn = document.getElementById('fixed-run-button');
         runBtn.disabled = true;
@@ -607,7 +591,6 @@
         document.getElementById('run-button-text').textContent = 'Running...';
         document.getElementById('fixed-run-text').textContent = 'Running...';
 
-        // Add loading animation to output
         const outputElement = document.getElementById('output');
         outputElement.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full">
@@ -622,7 +605,6 @@
 
         clearOutputs();
 
-        // Make API request
         fetch('/api/compiler', {
             method: 'POST',
             headers: {
@@ -641,7 +623,6 @@
                 return response.json();
             })
             .then(data => {
-                // Update compilation output
                 const compilationElement = document.getElementById('compilation');
                 compilationElement.textContent = data.compilationOutput || 'Compilation successful';
 
@@ -651,17 +632,13 @@
                     compilationElement.classList.add('text-emerald-400');
                 }
 
-                // Update execution output
                 outputElement.textContent = data.executionOutput || 'No output';
 
                 if (!data.executionSuccess && data.compilationSuccess) {
                     outputElement.classList.add('text-red-400');
                 }
 
-                // Update metric values with animation
                 animateValue('compilation-time', 0, data.compilationTimeMs, 800);
-
-                // Calculate percentages for progress bars (based on typical values)
                 const compPercentage = Math.min((data.compilationTimeMs / 1000) * 100, 100);
                 setProgress('compilation-progress', compPercentage);
 
@@ -678,8 +655,6 @@
                     document.getElementById('execution-time').textContent = '-';
                     document.getElementById('memory-usage').textContent = '-';
                 }
-
-                // Show appropriate tab and notification
                 if (!data.compilationSuccess) {
                     switchTab('compilation');
                     showToast('Compilation failed. Check errors.', false);
@@ -702,7 +677,6 @@
                 showToast('Error: ' + error.message, false);
             })
             .finally(() => {
-                // Reset UI state
                 isRunning = false;
                 runBtn.disabled = false;
                 fixedRunBtn.disabled = false;
@@ -725,8 +699,6 @@
         function updateValue(timestamp) {
             const elapsed = timestamp - startTime;
             const progress = Math.min(elapsed / duration, 1);
-
-            // Easing function for smoother animation
             const easeOutQuad = progress * (2 - progress);
 
             const currentValue = Math.floor(start + easeOutQuad * (end - start));
@@ -760,8 +732,6 @@
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-
-        // Show successful save notification
         showToast('Code saved as ' + title, true);
     }
 </script>
