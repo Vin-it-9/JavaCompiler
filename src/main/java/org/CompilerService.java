@@ -2,26 +2,15 @@ package org;
 
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
 
 @ApplicationScoped
 public class CompilerService {
@@ -33,14 +22,21 @@ public class CompilerService {
 
     private static final Pattern PUBLIC_CLASS_PATTERN =
             Pattern.compile("(?m)^\\s*public\\s+class\\s+(\\w+)\\s*\\{");
+
+
+
     private static final Pattern MAIN_METHOD_PATTERN =
             Pattern.compile("public\\s+static\\s+void\\s+main\\s*\\(\\s*String\\s*\\[\\s*\\]");
+
+
     private static final Pattern CLASS_NAME_PATTERN =
             Pattern.compile("(?m)^\\s*(?:public\\s+)?class\\s+(\\w+)");
 
 
     public CompletableFuture<CodeSnippet> compileAndRun(CodeSnippet snippet) {
+
         return CompletableFuture.supplyAsync(() -> {
+
             Path tempDir = null;
             long startTime = System.currentTimeMillis();
 
@@ -203,6 +199,7 @@ public class CompilerService {
         boolean success = false;
 
         try {
+
             List<String> command = new ArrayList<>();
             command.add("java");
             command.add("-Xmx" + MAX_MEMORY_MB + "m");
@@ -215,6 +212,7 @@ public class CompilerService {
             command.add(className);
 
             ProcessBuilder processBuilder = new ProcessBuilder(command);
+
             processBuilder.directory(workingDir.toFile());
             processBuilder.redirectErrorStream(true);
 
