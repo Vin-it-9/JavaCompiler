@@ -258,7 +258,9 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             background: rgba(16, 185, 129, 1);
         }
+
     </style>
+
     <script>
         tailwind.config = {
             theme: {
@@ -335,8 +337,8 @@
                 </div>
                 <div class="flex items-center">
                     <select id="theme-select" class="bg-slate-700 text-slate-300 text-xs py-1.5 px-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                        <option value="intellij-dark">IntelliJ IDEA Dark</option>
                         <option value="vs-dark">VS Code Dark</option>
+                        <option value="intellij-dark">IntelliJ IDEA Dark</option>
                         <option value="monokai">Monokai</option>
                         <option value="vs">Eclipse</option>
                         <option value="hc-black">High Contrast</option>
@@ -457,11 +459,9 @@ public class Main {
     let editor;
     let isRunning = false;
 
-
     require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.1/min/vs' }});
 
     document.addEventListener('DOMContentLoaded', function() {
-
         require(['vs/editor/editor.main'], function() {
 
             monaco.editor.defineTheme('intellij-dark', {
@@ -495,7 +495,6 @@ public class Main {
                 }
             });
 
-            // Define custom Monokai theme (since you previously had it)
             monaco.editor.defineTheme('monokai', {
                 base: 'vs-dark',
                 inherit: true,
@@ -518,16 +517,18 @@ public class Main {
 
             initMonacoEditor();
 
+            document.getElementById('theme-select').value = 'vs-dark';
+
             document.getElementById('run-button').addEventListener('click', compileAndRun);
             document.getElementById('fixed-run-button').addEventListener('click', compileAndRun);
             document.getElementById('clear-button').addEventListener('click', clearEditor);
             document.getElementById('save-button').addEventListener('click', saveSnippet);
 
+            // Theme change handler
             document.getElementById('theme-select').addEventListener('change', function() {
                 const theme = this.value;
                 monaco.editor.setTheme(theme);
 
-                // Update editor container class for glassmorphism effects
                 const editorContainer = document.getElementById('editor-container');
                 if (theme === 'intellij-dark') {
                     editorContainer.className = 'editor-area theme-intellij-glass';
@@ -536,12 +537,14 @@ public class Main {
                 }
             });
 
+            // Tab switch handler
             document.querySelectorAll('.custom-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     switchTab(this.getAttribute('data-tab'));
                 });
             });
 
+            // Keyboard shortcuts
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'F9') {
                     e.preventDefault();
@@ -558,11 +561,22 @@ public class Main {
                     clearEditor();
                 }
             });
+
+            // Handle package suggestion
+            document.getElementById('add-package-btn').addEventListener('click', function() {
+                const currentValue = editor.getValue();
+
+                if (!currentValue.trim().startsWith('package')) {
+
+
+                    // Hide the suggestion after adding
+                    document.getElementById('package-suggestion').style.display = 'none';
+                }
+            });
         });
     });
 
     function initMonacoEditor() {
-
         const initialCode = document.getElementById('code-editor').value;
 
         monaco.languages.registerCompletionItemProvider('java', {
@@ -575,8 +589,6 @@ public class Main {
                     startColumn: word.startColumn,
                     endColumn: word.endColumn
                 };
-
-                // Get the text before cursor on current line for context
                 const linePrefix = model.getValueInRange({
                     startLineNumber: position.lineNumber,
                     endLineNumber: position.lineNumber,
@@ -584,7 +596,6 @@ public class Main {
                     endColumn: position.column
                 });
 
-                // Java keywords
                 const keywords = [
                     'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char',
                     'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum',
@@ -722,10 +733,10 @@ public class Main {
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
-            theme: 'intellij-dark',
+            theme: 'vs-dark', // Changed default theme to VS Code Dark
             automaticLayout: true,
             fontSize: 15,
-            fontFamily: 'JetBrains Mono, Consolas, monospace',
+            fontFamily: 'JetBrains Mono, Fira Code, Consolas, "Liberation Mono", Menlo, monospace',
             lineNumbers: 'on',
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
@@ -745,9 +756,16 @@ public class Main {
             }
         });
 
+        // Update editor container style for VS Code theme
+        document.getElementById('editor-container').className = 'editor-area';
+
         editor.onDidChangeModelContent(function() {
             updateCharCount();
             document.getElementById('code-editor').value = editor.getValue();
+
+            // Check if we should show package suggestion
+            checkForPackageSuggestion();
+
             try {
                 localStorage.setItem('javaEditorCode', editor.getValue());
             } catch (e) {
@@ -767,6 +785,8 @@ public class Main {
             console.error("Error loading from localStorage", e);
         }
     }
+
+    // init monaco editor ends here
 
     function updateCharCount() {
         const count = editor.getValue().length;
@@ -973,9 +993,10 @@ public class Main {
         requestAnimationFrame(updateValue);
     }
 
+    // save code file starts here Main.java
     function saveSnippet() {
         const sourceCode = editor.getValue();
-        const title = prompt('Enter filename to save as:', 'MyJavaCode.java');
+        const title = prompt('Enter filename to save as:', 'Main.java');
 
         if (!title) return;
 
@@ -993,6 +1014,7 @@ public class Main {
         URL.revokeObjectURL(url);
         showToast('Code saved as ' + title, true);
     }
+
 </script>
 </body>
 </html>

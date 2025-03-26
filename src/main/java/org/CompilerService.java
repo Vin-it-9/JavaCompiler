@@ -154,6 +154,7 @@ public class CompilerService {
     }
 
     private CompilationResult compileCode(Path sourceFile, Path workingDir) {
+
         StringBuilder output = new StringBuilder();
         boolean success = false;
 
