@@ -9,62 +9,164 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/darcula.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material-darker.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.min.js"></script>
     <style>
+        :root {
+            --primary-hue: 160;
+            --primary-color: hsl(var(--primary-hue), 84%, 45%);
+            --primary-hover: hsl(var(--primary-hue), 84%, 40%);
+            --accent-color: hsl(calc(var(--primary-hue) + 20), 84%, 45%);
+            --accent-hover: hsl(calc(var(--primary-hue) + 20), 84%, 40%);
+            --secondary-color: hsl(calc(var(--primary-hue) + 180), 70%, 55%);
+            --surface-1: rgba(30, 41, 59, 0.95);
+            --surface-2: rgba(51, 65, 85, 0.9);
+            --surface-3: rgba(71, 85, 105, 0.8);
+            --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --glow-shadow: 0 0 15px rgba(34, 211, 238, 0.5);
+            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            color: #f8fafc;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
         .glass {
             background: rgba(17, 25, 40, 0.75);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.125);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: var(--card-shadow);
         }
 
         .glass-light {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
-        }
-
-        .theme-intellij .CodeMirror {
-            background-color: #1e1f22 !important;
-            color: #a9b7c6 !important;
-        }
-
-        .theme-vscode .CodeMirror {
-            background-color: #1e1e1e !important;
-            color: #d4d4d4 !important;
-        }
-
-        .CodeMirror {
-            height: 500px;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-            font-size: 14px;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: var(--card-shadow);
             transition: all 0.3s ease;
         }
 
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
+        .glass-light:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .editor-area {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 280px);
+            min-height: 500px;
+        }
+
+        @media (max-width: 1024px) {
+            .editor-area {
+                height: calc(50vh - 100px);
+                min-height: 400px;
             }
         }
 
-        .loader {
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .CodeMirror {
+            flex: 1;
+            height: auto;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            line-height: 1.6;
+            padding: 8px 4px;
         }
 
+        .theme-darcula .CodeMirror {
+            background-color: #2b2b2b !important;
+            color: #a9b7c6 !important;
+        }
+
+        .theme-material-darker .CodeMirror {
+            background-color: #212121 !important;
+            color: #eeffff !important;
+        }
+
+        .action-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .action-btn:active {
+            transform: translateY(1px);
+        }
+
+        .action-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .action-btn:hover::after {
+            opacity: 1;
+        }
+
+        .custom-tab {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .custom-tab::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary-color);
+            transform: scaleX(0);
+            transform-origin: center;
+            transition: transform 0.3s ease;
+        }
+        .custom-tab.active {
+            color: #10b981;
+        }
+        .custom-tab.active::after {
+            transform: scaleX(1);
+        }
+
+        .layout-container {
+            max-width: 1800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
 
         ::-webkit-scrollbar {
             width: 8px;
@@ -72,148 +174,274 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(102, 126, 234, 0.6);
-            border-radius: 10px;
+            background: rgba(56, 189, 248, 0.2);
+            border-radius: 8px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(102, 126, 234, 0.8);
+            background: rgba(56, 189, 248, 0.4);
         }
 
-        .dark-mode {
-            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-            color: #e5e7eb;
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
         }
 
-        .light-mode {
-            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-            color: #1f2937;
+        .pulse-animation {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            z-index: 50;
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .status-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .resizer {
+            height: 100%;
+            width: 4px;
+            cursor: col-resize;
+            background-color: rgba(255, 255, 255, 0.05);
+            transition: background-color 0.3s;
+        }
+
+        .resizer:hover,
+        .resizer:active {
+            background-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .shortcut-hint {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 20px;
+            min-width: 20px;
+            padding: 0 4px;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            font-family: var(--font-mono);
+            margin-left: 8px;
+        }
+
+        .fixed-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+        .fixed-run-button {
+            background: rgba(16, 185, 129, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .fixed-run-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            background: rgba(16, 185, 129, 1);
         }
     </style>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
+                fontFamily: {
+                    sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
+                },
                 extend: {
                     colors: {
                         primary: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            200: '#bbf7d0',
-                            300: '#86efac',
-                            400: '#4ade80',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                            900: '#14532d',
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        },
+                        secondary: {
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
                         }
                     },
-                    animation: {
-                        'bounce-slow': 'bounce 3s infinite',
-                    }
                 }
             }
         }
     </script>
 </head>
-<body class="dark-mode min-h-screen transition-all duration-300">
-<div class="container mx-auto px-4 py-8 max-w-7xl">
-    <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-blue-500 inline-block mb-2">
-            Made With Quarkus
-        </h1>
-        <p class="text-gray-400 text-lg">Compile and run Java code with real-time performance metrics</p>
+<body class="bg-slate-900  pl-32 pr-32">
+
+<div class="fixed-controls">
+    <button id="fixed-run-button" class="fixed-run-button px-4 py-2.5 text-white font-medium flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+        </svg>
+        <span id="fixed-run-text">Run</span>
+    </button>
+</div>
+
+<header class="py-6 relative overflow-hidden">
+    <div class="layout-container">
+        <div class="text-center relative z-10">
+            <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-400 via-teal-400 to-sky-400 inline-block mb-2">
+                Made With Quarkus
+            </h1>
+            <p class="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg">
+                online Java compiler with performance monitoring
+            </p>
+        </div>
+
+        <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <div class="absolute top-1/2 left-1/4 w-64 h-64 bg-primary-500/5 rounded-full filter blur-3xl"></div>
+            <div class="absolute top-1/3 right-1/4 w-96 h-96 bg-sky-500/5 rounded-full filter blur-3xl"></div>
+        </div>
     </div>
+</header>
+
+<main class="flex-1 layout-container pb-16">
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
 
         <div class="glass rounded-xl overflow-hidden">
-            <div class="bg-gray-800 bg-opacity-70 px-4 py-3 flex justify-between items-center border-b border-gray-700">
-                    <span class="flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="font-medium">Source Code</span>
-                    </span>
-                <select id="theme-select" class="bg-gray-700 text-gray-200 py-1 px-3 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    <option value="material-darker">VS Code Dark</option>
-                    <option value="default">White Theme</option>
-                    <option value="monokai">Monokai</option>
-                    <option value="darcula">IntelliJ IDEA Dark</option>
-                </select>
+            <div class="bg-slate-800/80 px-4 py-3 flex items-center justify-between border-b border-slate-700/50">
+                <div class="flex items-center space-x-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="text-sm font-medium text-slate-300">Java Source</span>
+                    <span id="char-count" class="text-xs text-slate-500">0 chars</span>
+                </div>
+                <div class="flex items-center">
+                    <select id="theme-select" class="bg-slate-700 text-slate-300 text-xs py-1.5 px-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                        <option value="material-darker">VS Code Dark</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="darcula">IntelliJ IDEA Dark</option>
+                        <option value="default">Eclipse</option>
+                    </select>
+                </div>
             </div>
-            <div id="editor-container" class="theme-default">
+            <div id="editor-container" class="editor-area theme-default">
                     <textarea id="code-editor">public class Main {
     public static void main(String[] args) {
-        System.out.println("Quarkus Supersonic Subatomic Java!");
+        System.out.println("Hello, World!");
     }
 }</textarea>
             </div>
         </div>
 
-        <div class="flex flex-col">
-            <div class="glass rounded-xl overflow-hidden flex-grow">
-                <div class="bg-gray-800 bg-opacity-70 border-b border-gray-700">
-                    <div class="flex">
-                        <button class="tab active py-3 px-6 text-sm font-medium focus:outline-none transition-colors" data-tab="output">
-                            Output
-                        </button>
-                        <button class="tab py-3 px-6 text-sm font-medium focus:outline-none transition-colors" data-tab="compilation">
-                            Compilation
-                        </button>
-                    </div>
+        <div class="flex flex-col glass rounded-xl overflow-hidden">
+            <div class="bg-slate-800/80 border-b border-slate-700/50">
+                <div class="flex">
+                    <button class="custom-tab active py-3 px-6 text-sm font-medium" data-tab="output">
+                        Output
+                    </button>
+                    <button class="custom-tab py-3 px-6 text-sm font-medium" data-tab="compilation">
+                        Compilation
+                    </button>
                 </div>
-                <div id="output" class="tab-content p-4 h-[500px] overflow-auto font-mono text-sm whitespace-pre-wrap active"></div>
-                <div id="compilation" class="tab-content p-4 h-[500px] overflow-auto font-mono text-sm whitespace-pre-wrap hidden"></div>
+            </div>
+            <div class="editor-area">
+                <div id="output" class="tab-content p-5 h-full overflow-auto font-mono text-sm whitespace-pre-wrap"></div>
+                <div id="compilation" class="tab-content p-5 h-full overflow-auto font-mono text-sm whitespace-pre-wrap hidden"></div>
             </div>
         </div>
     </div>
 
-    <div class="mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="glass-light rounded-xl overflow-hidden p-6 text-center transform transition-transform hover:-translate-y-1">
-                <div class="text-3xl font-bold text-primary-500 mb-2" id="compilation-time">-</div>
-                <div class="text-xs uppercase tracking-wider text-gray-400 font-medium">Compilation Time (ms)</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div class="glass-light p-5">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xs font-medium text-slate-400 uppercase tracking-wider">Compilation Time</h3>
+                <p class="text-3xl font-semibold text-primary-400" id="compilation-time">-</p>
             </div>
-            <div class="glass-light rounded-xl overflow-hidden p-6 text-center transform transition-transform hover:-translate-y-1">
-                <div class="text-3xl font-bold text-indigo-500 mb-2" id="execution-time">-</div>
-                <div class="text-xs uppercase tracking-wider text-gray-400 font-medium">Execution Time (ms)</div>
+            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+                <div id="compilation-progress" class="h-full bg-primary-500/70 w-0 rounded-full transition-all duration-1000"></div>
             </div>
-            <div class="glass-light rounded-xl overflow-hidden p-6 text-center transform transition-transform hover:-translate-y-1">
-                <div class="text-3xl font-bold text-blue-500 mb-2" id="memory-usage">-</div>
-                <div class="text-xs uppercase tracking-wider text-gray-400 font-medium">Memory Usage (KB)</div>
+            <div class="mt-2 text-right text-xs text-slate-500">milliseconds</div>
+        </div>
+
+        <div class="glass-light p-5">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xs font-medium text-slate-400 uppercase tracking-wider">Execution Time</h3>
+                <p class="text-3xl font-semibold text-sky-400" id="execution-time">-</p>
             </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+                <div id="execution-progress" class="h-full bg-sky-500/70 w-0 rounded-full transition-all duration-1000"></div>
+            </div>
+            <div class="mt-2 text-right text-xs text-slate-500">milliseconds</div>
+        </div>
+
+        <div class="glass-light p-5">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xs font-medium text-slate-400 uppercase tracking-wider">Memory Usage</h3>
+                <p class="text-3xl font-semibold text-purple-400" id="memory-usage">-</p>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+                <div id="memory-progress" class="h-full bg-purple-500/70 w-0 rounded-full transition-all duration-1000"></div>
+            </div>
+            <div class="mt-2 text-right text-xs text-slate-500">kilobytes</div>
         </div>
     </div>
 
-    <div id="status-message" class="mb-6 py-3 px-4 rounded-lg text-center font-medium hidden"></div>
-
-    <div class="flex flex-wrap gap-4 justify-center">
-        <button id="run-button" class="px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium rounded-lg flex items-center transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50">
+    <div class="flex flex-wrap justify-center gap-4">
+        <button id="run-button" class="action-btn bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium px-6 py-3 rounded-lg flex items-center shadow-lg shadow-primary-500/20">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
             </svg>
             <span id="run-button-text">Compile & Run</span>
+            <span class="shortcut-hint">F9</span>
         </button>
-        <button id="save-button" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white font-medium rounded-lg flex items-center transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+
+        <button id="save-button" class="action-btn bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white font-medium px-6 py-3 rounded-lg flex items-center shadow-lg shadow-sky-500/20">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+                <path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
             </svg>
             Save Code
+            <span class="shortcut-hint">Ctrl+S</span>
         </button>
-        <button id="clear-button" class="px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-800 hover:to-gray-700 text-white font-medium rounded-lg flex items-center transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+
+        <button id="clear-button" class="action-btn bg-slate-700 hover:bg-slate-600 text-white font-medium px-6 py-3 rounded-lg flex items-center shadow-lg shadow-slate-800/30 border border-slate-600">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                <path fill-rule="evenodd" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
             Clear
+            <span class="shortcut-hint">Ctrl+K</span>
         </button>
     </div>
+</main>
+
+<footer class="py-8 border-t border-slate-800/50">
+    <div class="layout-container">
+        <div class="text-center">
+            <div class="text-slate-600 text-xs mt-2">Press F9 to compile and run your code</div>
+        </div>
+    </div>
+</footer>
+
+<div id="status-toast" class="status-toast bg-slate-900/90 backdrop-blur-sm text-white px-5 py-3 rounded-lg shadow-lg border border-slate-700/50 flex items-center">
+    <div id="status-icon" class="mr-3"></div>
+    <span id="status-message">Ready</span>
 </div>
 
 <script>
@@ -221,7 +449,7 @@
     let isRunning = false;
 
     document.addEventListener('DOMContentLoaded', function() {
-
+        // Initialize CodeMirror
         codeEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
             mode: 'text/x-java',
             lineNumbers: true,
@@ -232,65 +460,122 @@
             autoCloseBrackets: true,
             styleActiveLine: true,
             lineWrapping: false,
-            tabSize: 4
+            tabSize: 4,
+            scrollbarStyle: null
         });
 
+        // Update character count on change
+        codeEditor.on('change', function() {
+            updateCharCount();
+        });
+        updateCharCount();
+
+        // Set up event listeners
         document.getElementById('run-button').addEventListener('click', compileAndRun);
+        document.getElementById('fixed-run-button').addEventListener('click', compileAndRun);
         document.getElementById('clear-button').addEventListener('click', clearEditor);
         document.getElementById('save-button').addEventListener('click', saveSnippet);
 
+        // Theme change handler
         document.getElementById('theme-select').addEventListener('change', function() {
             const theme = this.value;
             codeEditor.setOption('theme', theme);
 
             // Set theme class on editor container
             const editorContainer = document.getElementById('editor-container');
-            editorContainer.className = ''; // Remove existing theme classes
+            editorContainer.className = 'editor-area'; // Reset classes
             editorContainer.classList.add('theme-' + theme);
         });
 
-        document.querySelectorAll('.tab').forEach(tab => {
+        // Setup tab clicking
+        document.querySelectorAll('.custom-tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 switchTab(this.getAttribute('data-tab'));
             });
         });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // F9 to run code
+            if (e.key === 'F9') {
+                e.preventDefault();
+                compileAndRun();
+            }
+
+            // Ctrl+S to save
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveSnippet();
+            }
+
+            // Ctrl+K to clear
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                clearEditor();
+            }
+        });
     });
 
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.classList.remove('active', 'border-b-2', 'border-primary-500', 'text-primary-400');
-            tab.classList.add('text-gray-400');
-        });
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-
-        const activeTab = document.querySelector('.tab[data-tab="' + tabId + '"]');
-        activeTab.classList.add('active', 'border-b-2', 'border-primary-500', 'text-primary-400');
-        activeTab.classList.remove('text-gray-400');
-
-        document.getElementById(tabId).classList.remove('hidden');
-        document.getElementById(tabId).classList.add('active');
+    function updateCharCount() {
+        const count = codeEditor.getValue().length;
+        document.getElementById('char-count').textContent = count + ' chars';
     }
 
-    function showStatus(message, isError = false) {
-        const statusBar = document.getElementById('status-message');
-        statusBar.textContent = message;
-        statusBar.className = 'mb-6 py-3 px-4 rounded-lg text-center font-medium'; // Reset classes
+    function switchTab(tabId) {
+        document.querySelectorAll('.custom-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
 
-        if (isError) {
-            statusBar.classList.add('bg-red-100', 'text-red-800', 'border-l-4', 'border-red-500');
+        document.querySelector('.custom-tab[data-tab="' + tabId + '"]').classList.add('active');
+        document.getElementById(tabId).classList.remove('hidden');
+    }
+
+    function showToast(message, success = true) {
+        const toast = document.getElementById('status-toast');
+        const icon = document.getElementById('status-icon');
+        const messageEl = document.getElementById('status-message');
+
+        // Set message
+        messageEl.textContent = message;
+
+        // Set icon based on status
+        if (success) {
+            icon.innerHTML = `
+                    <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>`;
+            toast.classList.add('border-primary-500/50');
+            toast.classList.remove('border-rose-500/50');
         } else {
-            statusBar.classList.add('bg-green-100', 'text-green-800', 'border-l-4', 'border-green-500');
+            icon.innerHTML = `
+                    <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>`;
+            toast.classList.add('border-rose-500/50');
+            toast.classList.remove('border-primary-500/50');
         }
 
-        statusBar.classList.remove('hidden');
+        // Show toast with animation
+        toast.classList.add('show');
+
+        // Hide after delay
         setTimeout(() => {
-            statusBar.classList.add('hidden');
-        }, 5000);
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    function setProgress(elementId, percentage) {
+        document.getElementById(elementId).style.width = Math.min(100, percentage) + '%';
     }
 
     function clearEditor() {
         codeEditor.setValue('public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}');
         clearOutputs();
+        updateCharCount();
+        showToast('Editor cleared and reset to default template');
     }
 
     function clearOutputs() {
@@ -299,7 +584,11 @@
         document.getElementById('compilation-time').textContent = '-';
         document.getElementById('execution-time').textContent = '-';
         document.getElementById('memory-usage').textContent = '-';
-        document.getElementById('status-message').classList.add('hidden');
+
+        // Reset progress bars
+        setProgress('compilation-progress', 0);
+        setProgress('execution-progress', 0);
+        setProgress('memory-progress', 0);
     }
 
     function compileAndRun() {
@@ -307,14 +596,33 @@
 
         isRunning = true;
         const sourceCode = codeEditor.getValue();
-        document.getElementById('run-button').disabled = true;
+
+        // Update UI to show loading state
+        const runBtn = document.getElementById('run-button');
+        const fixedRunBtn = document.getElementById('fixed-run-button');
+        runBtn.disabled = true;
+        fixedRunBtn.disabled = true;
+        runBtn.classList.add('opacity-75');
+        fixedRunBtn.classList.add('opacity-75');
         document.getElementById('run-button-text').textContent = 'Running...';
-        document.getElementById('run-button').classList.add('opacity-75');
+        document.getElementById('fixed-run-text').textContent = 'Running...';
+
+        // Add loading animation to output
         const outputElement = document.getElementById('output');
-        outputElement.innerHTML = '<div class="flex items-center justify-center h-full"><div class="loader text-primary-500">Loading results...</div></div>';
+        outputElement.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full">
+                    <div class="w-10 h-10 mb-4">
+                        <svg class="animate-spin w-full h-full text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-slate-400">Compiling and executing your code...</p>
+                </div>`;
 
         clearOutputs();
 
+        // Make API request
         fetch('/api/compiler', {
             method: 'POST',
             headers: {
@@ -333,40 +641,54 @@
                 return response.json();
             })
             .then(data => {
+                // Update compilation output
                 const compilationElement = document.getElementById('compilation');
                 compilationElement.textContent = data.compilationOutput || 'Compilation successful';
 
                 if (!data.compilationSuccess) {
                     compilationElement.classList.add('text-red-400');
                 } else {
-                    compilationElement.classList.add('text-green-400');
+                    compilationElement.classList.add('text-emerald-400');
                 }
 
+                // Update execution output
                 outputElement.textContent = data.executionOutput || 'No output';
 
                 if (!data.executionSuccess && data.compilationSuccess) {
                     outputElement.classList.add('text-red-400');
                 }
 
-                animateCounter('compilation-time', 0, data.compilationTimeMs);
+                // Update metric values with animation
+                animateValue('compilation-time', 0, data.compilationTimeMs, 800);
+
+                // Calculate percentages for progress bars (based on typical values)
+                const compPercentage = Math.min((data.compilationTimeMs / 1000) * 100, 100);
+                setProgress('compilation-progress', compPercentage);
 
                 if (data.compilationSuccess) {
-                    animateCounter('execution-time', 0, data.executionTimeMs);
-                    animateCounter('memory-usage', 0, Math.round(data.peakMemoryBytes / 1024));
+                    animateValue('execution-time', 0, data.executionTimeMs, 800);
+                    animateValue('memory-usage', 0, Math.round(data.peakMemoryBytes / 1024), 800);
+
+                    const execPercentage = Math.min((data.executionTimeMs / 1000) * 100, 100);
+                    const memPercentage = Math.min(((data.peakMemoryBytes / 1024) / 500) * 100, 100);
+
+                    setProgress('execution-progress', execPercentage);
+                    setProgress('memory-progress', memPercentage);
                 } else {
                     document.getElementById('execution-time').textContent = '-';
                     document.getElementById('memory-usage').textContent = '-';
                 }
 
+                // Show appropriate tab and notification
                 if (!data.compilationSuccess) {
                     switchTab('compilation');
-                    showStatus('Compilation failed. Check errors.', true);
+                    showToast('Compilation failed. Check errors.', false);
                 } else if (!data.executionSuccess) {
                     switchTab('output');
-                    showStatus('Execution failed. Check output for errors.', true);
+                    showToast('Execution failed. Check output for errors.', false);
                 } else {
                     switchTab('output');
-                    showStatus('Code executed successfully!');
+                    showToast('Code executed successfully!', true);
                 }
             })
             .catch(error => {
@@ -377,36 +699,47 @@
                 document.getElementById('execution-time').textContent = '-';
                 document.getElementById('memory-usage').textContent = '-';
 
-                showStatus('Error: ' + error.message, true);
+                showToast('Error: ' + error.message, false);
             })
             .finally(() => {
+                // Reset UI state
                 isRunning = false;
-                document.getElementById('run-button').disabled = false;
+                runBtn.disabled = false;
+                fixedRunBtn.disabled = false;
+                runBtn.classList.remove('opacity-75');
+                fixedRunBtn.classList.remove('opacity-75');
                 document.getElementById('run-button-text').textContent = 'Compile & Run';
-                document.getElementById('run-button').classList.remove('opacity-75');
+                document.getElementById('fixed-run-text').textContent = 'Run';
             });
     }
 
-    function animateCounter(elementId, start, end) {
-        const duration = 1000;
+    function animateValue(elementId, start, end, duration) {
         const element = document.getElementById(elementId);
         const startTime = performance.now();
 
-        function updateCounter(timestamp) {
+        if (end == 0) {
+            element.textContent = '0';
+            return;
+        }
+
+        function updateValue(timestamp) {
             const elapsed = timestamp - startTime;
             const progress = Math.min(elapsed / duration, 1);
 
-            const currentValue = Math.floor(start + progress * (end - start));
+            // Easing function for smoother animation
+            const easeOutQuad = progress * (2 - progress);
+
+            const currentValue = Math.floor(start + easeOutQuad * (end - start));
             element.textContent = currentValue;
 
             if (progress < 1) {
-                requestAnimationFrame(updateCounter);
+                requestAnimationFrame(updateValue);
             } else {
                 element.textContent = end;
             }
         }
 
-        requestAnimationFrame(updateCounter);
+        requestAnimationFrame(updateValue);
     }
 
     function saveSnippet() {
@@ -427,10 +760,10 @@
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        showStatus('Code saved as ' + title);
 
+        // Show successful save notification
+        showToast('Code saved as ' + title, true);
     }
 </script>
-
 </body>
 </html>
