@@ -20,4 +20,13 @@ public class CodeSnippet {
     public long peakMemoryBytes;
 
     public Map<String, String> additionalFiles = new HashMap<>();
+
+    public CodeSnippet() {
+    }
+
+    public CodeSnippet(String sourceCode) {
+        this.sourceCode = sourceCode;
+    }
+
+
 }

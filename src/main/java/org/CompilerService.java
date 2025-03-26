@@ -1,5 +1,6 @@
 package org;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.io.*;
@@ -40,10 +41,12 @@ public class CompilerService {
 
     public CompletableFuture<CodeSnippet> compileAndRun(CodeSnippet snippet) {
         return CompletableFuture.supplyAsync(() -> {
+
             Path tempDir = null;
             long startTime = System.currentTimeMillis();
 
             try {
+
                 if (snippet.sourceCode == null || snippet.sourceCode.trim().isEmpty()) {
                     snippet.compilationOutput = "Error: Source code cannot be empty";
                     snippet.compilationSuccess = false;
@@ -51,8 +54,8 @@ public class CompilerService {
                 }
 
                 String codeHash = Integer.toHexString(snippet.sourceCode.hashCode());
-
                 String mainClassName = extractPublicClassName(snippet.sourceCode);
+
                 if (mainClassName == null) {
                     snippet.compilationOutput = "Error: Could not find a public class in your code.";
                     snippet.compilationSuccess = false;
@@ -68,7 +71,6 @@ public class CompilerService {
                 CompilationResult compilationResult;
 
                 if (classCache.containsKey(codeHash)) {
-
                     Path classFile = tempDir.resolve(mainClassName + ".class");
                     Files.write(classFile, classCache.get(codeHash));
                     compilationResult = new CompilationResult("Compilation successful (cached)", true);
@@ -87,6 +89,7 @@ public class CompilerService {
                 }
 
                 long compilationEnd = System.currentTimeMillis();
+
                 snippet.compilationTimeMs = compilationEnd - compilationStart;
 
                 snippet.compilationOutput = compilationResult.output;
@@ -211,10 +214,12 @@ public class CompilerService {
         long memoryUsed = 0;
 
         try {
+
             Path memoryFile = workingDir.resolve("memory.txt");
             Path memoryHelperPath = createMemoryHelperClass(workingDir, className);
 
             List<String> command = new ArrayList<>();
+
             command.add("java");
             command.add("-Xshare:on");
             command.add("-XX:+TieredCompilation");
@@ -291,6 +296,7 @@ public class CompilerService {
     }
 
     private Path createMemoryHelperClass(Path workingDir, String targetClass) throws IOException, InterruptedException {
+
         Path helperPath = workingDir.resolve("MemoryHelper.java");
 
         String helperCode =
@@ -386,7 +392,7 @@ public class CompilerService {
         }
     }
 
-    @jakarta.annotation.PreDestroy
+    @PreDestroy
     public void cleanup() {
         compilerService.shutdown();
         try {

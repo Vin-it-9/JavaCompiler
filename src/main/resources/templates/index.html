@@ -5,18 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modern Java Compiler</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/darcula.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material-darker.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.1/min/vs/loader.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.min.js"></script>
+
     <style>
         :root {
             --primary-hue: 160;
@@ -88,23 +86,25 @@
             }
         }
 
-        .CodeMirror {
+        /* Monaco Editor container */
+        #monaco-editor {
+            width: 100%;
+            height: 100%;
             flex: 1;
-            height: auto;
-            font-family: var(--font-mono);
-            font-size: 15px;
-            line-height: 1.6;
-            padding: 8px 4px;
         }
 
-        .theme-darcula .CodeMirror {
-            background-color: #2b2b2b !important;
-            color: #a9b7c6 !important;
+        /* IntelliJ IDEA Glassmorphism Theme */
+        .theme-intellij-glass .monaco-editor {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
         }
 
-        .theme-material-darker .CodeMirror {
-            background-color: #212121 !important;
-            color: #eeffff !important;
+        .theme-intellij-glass .monaco-editor-background {
+            background-color: rgba(43, 43, 43, 0.85) !important;
+        }
+
+        .theme-intellij-glass .monaco-editor .margin {
+            background-color: rgba(43, 43, 43, 0.7) !important;
         }
 
         .action-btn {
@@ -335,19 +335,28 @@
                 </div>
                 <div class="flex items-center">
                     <select id="theme-select" class="bg-slate-700 text-slate-300 text-xs py-1.5 px-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                        <option value="material-darker">VS Code Dark</option>
+                        <option value="intellij-dark">IntelliJ IDEA Dark</option>
+                        <option value="vs-dark">VS Code Dark</option>
                         <option value="monokai">Monokai</option>
-                        <option value="darcula">IntelliJ IDEA Dark</option>
-                        <option value="default">Eclipse</option>
+                        <option value="vs">Eclipse</option>
+                        <option value="hc-black">High Contrast</option>
                     </select>
                 </div>
             </div>
-            <div id="editor-container" class="editor-area theme-default">
-                    <textarea id="code-editor">public class Main {
+            <div id="editor-container" class="editor-area theme-intellij-glass">
+
+         <textarea id="code-editor" style="display: none;">
+import java.util.*;
+import java.io.*;
+
+public class Main {
     public static void main(String[] args) {
         System.out.println("Quarkus Supersonic Subatomic Java");
     }
-}</textarea>
+}
+</textarea>
+
+                <div id="monaco-editor"></div>
             </div>
         </div>
 
@@ -445,71 +454,322 @@
 </div>
 
 <script>
-    let codeEditor;
+    let editor;
     let isRunning = false;
+
+
+    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.1/min/vs' }});
 
     document.addEventListener('DOMContentLoaded', function() {
 
-        codeEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-            mode: 'text/x-java',
-            lineNumbers: true,
-            theme: 'material-darker',
-            indentUnit: 4,
-            smartIndent: true,
-            matchBrackets: true,
-            autoCloseBrackets: true,
-            styleActiveLine: true,
-            lineWrapping: false,
-            tabSize: 4,
-            scrollbarStyle: null
-        });
+        require(['vs/editor/editor.main'], function() {
 
-        codeEditor.on('change', function() {
-            updateCharCount();
-        });
-        updateCharCount();
-
-        document.getElementById('run-button').addEventListener('click', compileAndRun);
-        document.getElementById('fixed-run-button').addEventListener('click', compileAndRun);
-        document.getElementById('clear-button').addEventListener('click', clearEditor);
-        document.getElementById('save-button').addEventListener('click', saveSnippet);
-
-        document.getElementById('theme-select').addEventListener('change', function() {
-            const theme = this.value;
-            codeEditor.setOption('theme', theme);
-
-            const editorContainer = document.getElementById('editor-container');
-            editorContainer.className = 'editor-area'; // Reset classes
-            editorContainer.classList.add('theme-' + theme);
-        });
-
-        document.querySelectorAll('.custom-tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                switchTab(this.getAttribute('data-tab'));
+            monaco.editor.defineTheme('intellij-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'comment', foreground: '808080' },
+                    { token: 'keyword', foreground: 'cc7832', fontStyle: 'bold' },
+                    { token: 'string', foreground: '6a8759' },
+                    { token: 'number', foreground: '6897bb' },
+                    { token: 'operator', foreground: 'a9b7c6' },
+                    { token: 'type', foreground: 'ffc66d' },
+                    { token: 'identifier', foreground: 'a9b7c6' },
+                    { token: 'annotation', foreground: 'bbb529' },
+                    { token: 'delimiter', foreground: 'a9b7c6' }
+                ],
+                colors: {
+                    'editor.background': '#2b2b2b',
+                    'editor.foreground': '#a9b7c6',
+                    'editorLineNumber.foreground': '#606366',
+                    'editorCursor.foreground': '#ffffff',
+                    'editor.selectionBackground': '#214283',
+                    'editor.inactiveSelectionBackground': '#163a6c',
+                    'editor.lineHighlightBackground': '#323232',
+                    'editorSuggestWidget.background': '#2b2b2b',
+                    'editorSuggestWidget.border': '#323232',
+                    'editorSuggestWidget.foreground': '#a9b7c6',
+                    'editorSuggestWidget.selectedBackground': '#193959',
+                    'editorHoverWidget.background': '#2b2b2b',
+                    'editorHoverWidget.border': '#323232'
+                }
             });
-        });
 
-        document.addEventListener('keydown', function(e) {
+            // Define custom Monokai theme (since you previously had it)
+            monaco.editor.defineTheme('monokai', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'comment', foreground: '75715e' },
+                    { token: 'string', foreground: 'e6db74' },
+                    { token: 'keyword', foreground: 'f92672' },
+                    { token: 'number', foreground: 'ae81ff' },
+                    { token: 'type', foreground: '66d9ef', fontStyle: 'italic' }
+                ],
+                colors: {
+                    'editor.background': '#272822',
+                    'editor.foreground': '#f8f8f2',
+                    'editorLineNumber.foreground': '#8f908a',
+                    'editorCursor.foreground': '#f8f8f2',
+                    'editor.selectionBackground': '#49483e',
+                    'editor.lineHighlightBackground': '#3e3d32'
+                }
+            });
 
-            if (e.key === 'F9') {
-                e.preventDefault();
-                compileAndRun();
-            }
+            initMonacoEditor();
 
-            if (e.ctrlKey && e.key === 's') {
-                e.preventDefault();
-                saveSnippet();
-            }
+            document.getElementById('run-button').addEventListener('click', compileAndRun);
+            document.getElementById('fixed-run-button').addEventListener('click', compileAndRun);
+            document.getElementById('clear-button').addEventListener('click', clearEditor);
+            document.getElementById('save-button').addEventListener('click', saveSnippet);
 
-            if (e.ctrlKey && e.key === 'k') {
-                e.preventDefault();
-                clearEditor();
-            }
+            document.getElementById('theme-select').addEventListener('change', function() {
+                const theme = this.value;
+                monaco.editor.setTheme(theme);
+
+                // Update editor container class for glassmorphism effects
+                const editorContainer = document.getElementById('editor-container');
+                if (theme === 'intellij-dark') {
+                    editorContainer.className = 'editor-area theme-intellij-glass';
+                } else {
+                    editorContainer.className = 'editor-area';
+                }
+            });
+
+            document.querySelectorAll('.custom-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchTab(this.getAttribute('data-tab'));
+                });
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F9') {
+                    e.preventDefault();
+                    compileAndRun();
+                }
+
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    saveSnippet();
+                }
+
+                if (e.ctrlKey && e.key === 'k') {
+                    e.preventDefault();
+                    clearEditor();
+                }
+            });
         });
     });
 
+    function initMonacoEditor() {
+
+        const initialCode = document.getElementById('code-editor').value;
+
+        monaco.languages.registerCompletionItemProvider('java', {
+            provideCompletionItems: function(model, position) {
+                const suggestions = [];
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                // Get the text before cursor on current line for context
+                const linePrefix = model.getValueInRange({
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: 1,
+                    endColumn: position.column
+                });
+
+                // Java keywords
+                const keywords = [
+                    'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char',
+                    'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum',
+                    'extends', 'final', 'finally', 'float', 'for', 'if', 'implements', 'import',
+                    'instanceof', 'int', 'interface', 'long', 'native', 'new', 'package',
+                    'private', 'protected', 'public', 'return', 'short', 'static', 'strictfp',
+                    'super', 'switch', 'synchronized', 'this', 'throw', 'throws', 'transient',
+                    'try', 'void', 'volatile', 'while', 'true', 'false', 'null'
+                ];
+
+                for (const keyword of keywords) {
+                    suggestions.push({
+                        label: keyword,
+                        kind: monaco.languages.CompletionItemKind.Keyword,
+                        insertText: keyword,
+                        range: range
+                    });
+                }
+
+                const javaClasses = [
+                    'String', 'Integer', 'Boolean', 'Double', 'Float', 'Long',
+                    'Object', 'System', 'Math', 'ArrayList', 'HashMap', 'List',
+                    'Map', 'Set', 'Collection', 'Arrays', 'Collections', 'StringBuilder',
+                    'StringBuffer', 'Thread', 'Runnable', 'Exception', 'RuntimeException',
+                    'Optional', 'Stream', 'Function', 'Consumer', 'Supplier', 'BiFunction',
+                    'BigInteger', 'BigDecimal', 'Calendar', 'Date', 'LocalDate', 'LocalTime',
+                    'LocalDateTime', 'Path', 'Files', 'Paths', 'ByteBuffer', 'Charset',
+                    'Pattern', 'Matcher', 'Scanner', 'PrintWriter', 'BufferedReader',
+                    'Character', 'Byte', 'Short', 'Enum', 'TreeMap', 'TreeSet', 'LinkedList',
+                    'Queue', 'Deque', 'PriorityQueue', 'HashTable', 'Vector', 'Stack',
+                    'Comparable', 'Comparator', 'Serializable', 'Cloneable', 'AutoCloseable',
+                    'Iterable', 'Iterator', 'Predicate', 'BiPredicate', 'UnaryOperator', 'BinaryOperator',
+                    'Future', 'CompletableFuture', 'Executor', 'ExecutorService', 'ScheduledExecutorService',
+                    'Period', 'Duration', 'Instant', 'ZonedDateTime', 'OffsetDateTime', 'YearMonth',
+                    'NumberFormat', 'SimpleDateFormat', 'DateTimeFormatter', 'Currency', 'Locale',
+                    'Properties', 'UUID', 'URL', 'URI', 'InetAddress', 'Socket', 'ServerSocket'
+                ];
+
+                for (const className of javaClasses) {
+                    suggestions.push({
+                        label: className,
+                        kind: monaco.languages.CompletionItemKind.Class,
+                        insertText: className,
+                        range: range
+                    });
+                }
+
+                const snippets = [
+                    {
+                        label: 'sout',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'System.out.println();',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Print to standard output'
+                    },
+                    {
+                        label: 'psvm',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'public static void main(String[] args) {\n\t\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Public static void main'
+                    },
+                    {
+                        label: 'fori',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'for (int i = 0; i < max; i++) {\n\t\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'For loop with index'
+                    },
+                    {
+                        label: 'trycatch',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'try {\n\t\n} catch (Exception e) {\n\te.printStackTrace();\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Try-catch block'
+                    }
+                ];
+
+                for (const snippet of snippets) {
+                    suggestions.push({
+                        ...snippet,
+                        range: range
+                    });
+                }
+
+                // Context-aware suggestions
+                if (linePrefix.endsWith('System.')) {
+                    suggestions.push({
+                        label: 'out',
+                        kind: monaco.languages.CompletionItemKind.Field,
+                        insertText: 'out',
+                        range: range,
+                        documentation: 'The standard output stream'
+                    });
+
+                    suggestions.push({
+                        label: 'err',
+                        kind: monaco.languages.CompletionItemKind.Field,
+                        insertText: 'err',
+                        range: range,
+                        documentation: 'The standard error stream'
+                    });
+                }
+
+                if (linePrefix.endsWith('System.out.')) {
+                    suggestions.push({
+                        label: 'println',
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: 'println()',
+                        range: range,
+                        documentation: 'Print a line of text'
+                    });
+
+                    suggestions.push({
+                        label: 'print',
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: 'print()',
+                        range: range,
+                        documentation: 'Print text without a newline'
+                    });
+
+                    suggestions.push({
+                        label: 'printf',
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: 'printf("%s", )',
+                        range: range,
+                        documentation: 'Print formatted text'
+                    });
+                }
+
+                return { suggestions };
+            }
+        });
+
+        editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+            value: initialCode,
+            language: 'java',
+            theme: 'intellij-dark',
+            automaticLayout: true,
+            fontSize: 15,
+            fontFamily: 'JetBrains Mono, Consolas, monospace',
+            lineNumbers: 'on',
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            renderLineHighlight: 'all',
+            matchBrackets: 'always',
+            autoIndent: 'full',
+            formatOnPaste: true,
+            tabSize: 4,
+            insertSpaces: true,
+            renderIndentGuides: true,
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: true,
+            smoothScrolling: true,
+            mouseWheelZoom: true,
+            bracketPairColorization: {
+                enabled: true
+            }
+        });
+
+        editor.onDidChangeModelContent(function() {
+            updateCharCount();
+            document.getElementById('code-editor').value = editor.getValue();
+            try {
+                localStorage.setItem('javaEditorCode', editor.getValue());
+            } catch (e) {
+                console.error("Error saving to localStorage", e);
+            }
+        });
+
+        updateCharCount();
+
+        try {
+            const savedCode = localStorage.getItem('javaEditorCode');
+            if (savedCode) {
+                editor.setValue(savedCode);
+                document.getElementById('code-editor').value = savedCode;
+            }
+        } catch (e) {
+            console.error("Error loading from localStorage", e);
+        }
+    }
+
     function updateCharCount() {
-        const count = codeEditor.getValue().length;
+        const count = editor.getValue().length;
         document.getElementById('char-count').textContent = count + ' chars';
     }
 
@@ -560,7 +820,8 @@
     }
 
     function clearEditor() {
-        codeEditor.setValue('public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}');
+        editor.setValue('import java.util.*;\nimport java.io.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Quarkus Supersonic Subatomic Java");\n    }\n}');
+        document.getElementById('code-editor').value = editor.getValue();
         clearOutputs();
         updateCharCount();
         showToast('Editor cleared and reset to default template');
@@ -581,7 +842,7 @@
         if (isRunning) return;
 
         isRunning = true;
-        const sourceCode = codeEditor.getValue();
+        const sourceCode = editor.getValue();
         const runBtn = document.getElementById('run-button');
         const fixedRunBtn = document.getElementById('fixed-run-button');
         runBtn.disabled = true;
@@ -695,7 +956,6 @@
             element.textContent = '0';
             return;
         }
-
         function updateValue(timestamp) {
             const elapsed = timestamp - startTime;
             const progress = Math.min(elapsed / duration, 1);
@@ -710,12 +970,11 @@
                 element.textContent = end;
             }
         }
-
         requestAnimationFrame(updateValue);
     }
 
     function saveSnippet() {
-        const sourceCode = codeEditor.getValue();
+        const sourceCode = editor.getValue();
         const title = prompt('Enter filename to save as:', 'MyJavaCode.java');
 
         if (!title) return;
