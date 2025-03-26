@@ -3,7 +3,9 @@ package org;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.file.*;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.*;
@@ -17,7 +19,7 @@ public class CompilerService {
     private static final int MAX_MEMORY_MB = 128;
     private static final int STACK_SIZE_KB = 512;
     private static final int MAX_SOURCE_SIZE_KB = 500;
-
+    private static final int IO_BUFFER_SIZE = 16384;
     private static final long JVM_OVERHEAD_BYTES = 512 * 1024;
 
     private static final Pattern PUBLIC_CLASS_PATTERN =
@@ -30,18 +32,25 @@ public class CompilerService {
     private static final Pattern MEMORY_USAGE_PATTERN =
             Pattern.compile("Memory:\\s*(\\d+)");
 
+    private final Map<String, byte[]> classCache = new ConcurrentHashMap<>();
+    private final ExecutorService compilerService =
+            Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
+
+    private final SecureRandom random = new SecureRandom();
+
     public CompletableFuture<CodeSnippet> compileAndRun(CodeSnippet snippet) {
         return CompletableFuture.supplyAsync(() -> {
             Path tempDir = null;
             long startTime = System.currentTimeMillis();
 
             try {
-
                 if (snippet.sourceCode == null || snippet.sourceCode.trim().isEmpty()) {
                     snippet.compilationOutput = "Error: Source code cannot be empty";
                     snippet.compilationSuccess = false;
                     return snippet;
                 }
+
+                String codeHash = Integer.toHexString(snippet.sourceCode.hashCode());
 
                 String mainClassName = extractPublicClassName(snippet.sourceCode);
                 if (mainClassName == null) {
@@ -53,10 +62,30 @@ public class CompilerService {
                 tempDir = createFastTempDirectory();
 
                 Path sourceFile = tempDir.resolve(mainClassName + ".java");
-                Files.writeString(sourceFile, snippet.sourceCode);
+                writeStringToFile(sourceFile, snippet.sourceCode);
 
                 long compilationStart = System.currentTimeMillis();
-                CompilationResult compilationResult = compileCode(sourceFile, tempDir);
+                CompilationResult compilationResult;
+
+                if (classCache.containsKey(codeHash)) {
+
+                    Path classFile = tempDir.resolve(mainClassName + ".class");
+                    Files.write(classFile, classCache.get(codeHash));
+                    compilationResult = new CompilationResult("Compilation successful (cached)", true);
+                } else {
+                    compilationResult = compileCode(sourceFile, tempDir);
+
+                    if (compilationResult.success) {
+                        try {
+                            Path classFile = tempDir.resolve(mainClassName + ".class");
+                            byte[] bytecode = Files.readAllBytes(classFile);
+                            classCache.put(codeHash, bytecode);
+                        } catch (IOException e) {
+
+                        }
+                    }
+                }
+
                 long compilationEnd = System.currentTimeMillis();
                 snippet.compilationTimeMs = compilationEnd - compilationStart;
 
@@ -92,20 +121,33 @@ public class CompilerService {
             } finally {
                 if (tempDir != null) {
                     try {
-                        deleteDirectory(tempDir.toFile());
+                        deleteDirectoryAsync(tempDir.toFile());
                     } catch (Exception e) {
+
                     }
                 }
             }
-        });
+        }, compilerService);
     }
 
     private Path createFastTempDirectory() throws IOException {
         String baseTempDir = System.getProperty("java.io.tmpdir");
-        SecureRandom random = new SecureRandom();
         String randomId = Long.toHexString(random.nextLong());
         Path tempDir = Paths.get(baseTempDir, "jc" + randomId);
         return Files.createDirectory(tempDir);
+    }
+
+    private void writeStringToFile(Path file, String content) throws IOException {
+        try (FileChannel channel = FileChannel.open(file,
+                StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+            byte[] buffer = new byte[IO_BUFFER_SIZE];
+            int bytesRead;
+            while ((bytesRead = bis.read(buffer)) != -1) {
+                channel.write(ByteBuffer.wrap(buffer, 0, bytesRead));
+            }
+        }
     }
 
     private CompilationResult compileCode(Path sourceFile, Path workingDir) {
@@ -120,6 +162,9 @@ public class CompilerService {
             command.add("UTF-8");
             command.add("-J-Xshare:on");
             command.add("-J-XX:TieredStopAtLevel=1");
+            command.add("-J-XX:+UseSerialGC");
+            command.add("-d");
+            command.add(workingDir.toString());
             command.add(sourceFile.toString());
 
             ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -128,7 +173,8 @@ public class CompilerService {
 
             Process process = processBuilder.start();
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()), IO_BUFFER_SIZE)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append('\n');
@@ -165,7 +211,6 @@ public class CompilerService {
         long memoryUsed = 0;
 
         try {
-
             Path memoryFile = workingDir.resolve("memory.txt");
             Path memoryHelperPath = createMemoryHelperClass(workingDir, className);
 
@@ -177,7 +222,7 @@ public class CompilerService {
             command.add("-Xverify:none");
             command.add("-XX:+UseSerialGC");
             command.add("-XX:CICompilerCount=2");
-            command.add("-Xms16m");
+            command.add("-Xms32m");
             command.add("-Xmx" + MAX_MEMORY_MB + "m");
             command.add("-Xss" + STACK_SIZE_KB + "k");
             command.add("-XX:MaxMetaspaceSize=64m");
@@ -193,7 +238,9 @@ public class CompilerService {
             env.remove("_JAVA_OPTIONS");
             env.remove("JDK_JAVA_OPTIONS");
             Process process = processBuilder.start();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8), IO_BUFFER_SIZE)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (line.startsWith("Picked up") ||
@@ -220,9 +267,8 @@ public class CompilerService {
             success = (exitCode == 0);
 
             if (Files.exists(memoryFile)) {
-                String memoryData = Files.readString(memoryFile);
                 try {
-                    memoryUsed = Long.parseLong(memoryData.trim());
+                    memoryUsed = Long.parseLong(Files.readString(memoryFile).trim());
                     if (memoryUsed < 10000 || memoryUsed > 100_000_000) {
                         memoryUsed = 200_000;
                     }
@@ -251,17 +297,19 @@ public class CompilerService {
                 "public class MemoryHelper {\n" +
                         "    public static void main(String[] args) throws Exception {\n" +
                         "        System.gc();\n" +
-                        "        Thread.sleep(50);\n" +
                         "        long before = getUsedMemory();\n" +
-                        "        // Run the target class's main method\n" +
-                        "        " + targetClass + ".main(args);\n" +
-                        "        System.gc();\n" +
-                        "        Thread.sleep(50);\n" +
-                        "        long after = getUsedMemory();\n" +
-                        "        long used = Math.max(0, after - before);\n" +
-                        "        // Write memory usage to a file\n" +
-                        "        java.nio.file.Files.writeString(java.nio.file.Paths.get(\"memory.txt\"), \n" +
-                        "            String.valueOf(used));\n" +
+                        "        try {\n" +
+                        "            " + targetClass + ".main(args);\n" +
+                        "        } catch (Throwable t) {\n" +
+                        "            System.out.println(\"Exception: \" + t.getClass().getName() + \": \" + t.getMessage());\n" +
+                        "            t.printStackTrace();\n" +
+                        "        } finally {\n" +
+                        "            System.gc();\n" +
+                        "            long after = getUsedMemory();\n" +
+                        "            long used = Math.max(0, after - before);\n" +
+                        "            java.nio.file.Files.writeString(java.nio.file.Paths.get(\"memory.txt\"), \n" +
+                        "                String.valueOf(used));\n" +
+                        "        }\n" +
                         "    }\n\n" +
                         "    private static long getUsedMemory() {\n" +
                         "        Runtime rt = Runtime.getRuntime();\n" +
@@ -270,7 +318,15 @@ public class CompilerService {
                         "}";
 
         Files.writeString(helperPath, helperCode);
-        ProcessBuilder pb = new ProcessBuilder("javac", helperPath.toString());
+
+        List<String> command = new ArrayList<>();
+        command.add("javac");
+        command.add("-J-Xshare:on");
+        command.add("-J-XX:TieredStopAtLevel=1");
+        command.add("-J-XX:+UseSerialGC");
+        command.add(helperPath.toString());
+
+        ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(workingDir.toFile());
         Process p = pb.start();
         p.waitFor(2, TimeUnit.SECONDS);
@@ -294,20 +350,18 @@ public class CompilerService {
         return MAIN_METHOD_PATTERN.matcher(sourceCode).find();
     }
 
-    private void deleteDirectory(File directory) {
-        if (directory.exists()) {
-            File[] files = directory.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        deleteDirectory(file);
-                    } else {
-                        file.delete();
-                    }
+    private void deleteDirectoryAsync(File directory) {
+        CompletableFuture.runAsync(() -> {
+            if (directory.exists()) {
+                try {
+                    Files.walk(directory.toPath())
+                            .sorted(Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(File::delete);
+                } catch (IOException e) {
                 }
             }
-            directory.delete();
-        }
+        });
     }
 
     private static class CompilationResult {
@@ -329,6 +383,16 @@ public class CompilerService {
             this.output = output;
             this.success = success;
             this.memoryUsed = memoryUsed;
+        }
+    }
+
+    @jakarta.annotation.PreDestroy
+    public void cleanup() {
+        compilerService.shutdown();
+        try {
+            compilerService.awaitTermination(1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
