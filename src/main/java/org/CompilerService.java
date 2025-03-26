@@ -1,13 +1,23 @@
 package org;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import org.CodeSnippet;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.UUID;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -17,124 +27,248 @@ import java.util.regex.Pattern;
 public class CompilerService {
 
     private static final long PROCESS_TIMEOUT_SECONDS = 10;
+    private static final int MAX_MEMORY_MB = 128;
+    private static final int STACK_SIZE_KB = 1024;
+    private static final int MAX_SOURCE_SIZE_KB = 500;
 
-    private static final Pattern CLASS_PATTERN = Pattern.compile("public\\s+class\\s+(\\w+)\\s*\\{");
+    private static final Pattern PUBLIC_CLASS_PATTERN =
+            Pattern.compile("(?m)^\\s*public\\s+class\\s+(\\w+)\\s*\\{");
+    private static final Pattern MAIN_METHOD_PATTERN =
+            Pattern.compile("public\\s+static\\s+void\\s+main\\s*\\(\\s*String\\s*\\[\\s*\\]");
+    private static final Pattern CLASS_NAME_PATTERN =
+            Pattern.compile("(?m)^\\s*(?:public\\s+)?class\\s+(\\w+)");
+
 
     public CompletableFuture<CodeSnippet> compileAndRun(CodeSnippet snippet) {
         return CompletableFuture.supplyAsync(() -> {
             Path tempDir = null;
+            long startTime = System.currentTimeMillis();
 
             try {
-                String uniqueId = UUID.randomUUID().toString();
-                tempDir = Files.createTempDirectory("java-compiler-" + uniqueId);
-                String className = extractMainClassName(snippet.sourceCode);
-                if (className == null) {
+
+                if (snippet.sourceCode == null || snippet.sourceCode.trim().isEmpty()) {
+                    snippet.compilationOutput = "Error: Source code cannot be empty";
+                    snippet.compilationSuccess = false;
+                    return snippet;
+                }
+                if (snippet.sourceCode.getBytes(StandardCharsets.UTF_8).length > MAX_SOURCE_SIZE_KB * 1024) {
+                    snippet.compilationOutput = "Error: Source code exceeds maximum size of " + MAX_SOURCE_SIZE_KB + "KB";
+                    snippet.compilationSuccess = false;
+                    return snippet;
+                }
+
+                tempDir = createSecureTempDirectory();
+
+                String mainClassName = extractPublicClassName(snippet.sourceCode);
+                if (mainClassName == null) {
                     snippet.compilationOutput = "Error: Could not find a public class in your code.\n" +
                             "Please ensure your code contains a public class declaration like 'public class YourClassName {...}'";
                     snippet.compilationSuccess = false;
-                    snippet.executionSuccess = false;
-                    return snippet;
-                }
-                File sourceFile = new File(tempDir.toFile(), className + ".java");
-                try (PrintWriter writer = new PrintWriter(sourceFile)) {
-                    writer.println(snippet.sourceCode);
-                }
-                ProcessBuilder compilerProcessBuilder = new ProcessBuilder(
-                        "javac", sourceFile.getAbsolutePath()
-                );
-                compilerProcessBuilder.directory(tempDir.toFile());
-                Process compilerProcess = compilerProcessBuilder.start();
-                boolean compiledInTime = compilerProcess.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-                if (!compiledInTime) {
-                    compilerProcess.destroyForcibly();
-                    snippet.compilationOutput = "Compilation timed out after " + PROCESS_TIMEOUT_SECONDS + " seconds.\n" +
-                            "Your code might be too complex or there might be an issue with the compiler.";
-                    snippet.compilationSuccess = false;
                     return snippet;
                 }
 
-                String compilerOutput = new String(compilerProcess.getErrorStream().readAllBytes());
-                int compileExitCode = compilerProcess.exitValue();
+                File sourceFile = new File(tempDir.toFile(), mainClassName + ".java");
+                try (PrintWriter writer = new PrintWriter(sourceFile, StandardCharsets.UTF_8)) {
+                    writer.print(snippet.sourceCode);
+                }
 
-                snippet.compilationOutput = compilerOutput.isEmpty() ? "Compilation successful" : compilerOutput;
-                snippet.compilationSuccess = compileExitCode == 0;
+                long compilationStart = System.currentTimeMillis();
+
+                CompilationResult compilationResult = compileCode(sourceFile, tempDir);
+
+                long compilationEnd = System.currentTimeMillis();
+                snippet.compilationTimeMs = compilationEnd - compilationStart;
+
+                snippet.compilationOutput = compilationResult.output;
+                snippet.compilationSuccess = compilationResult.success;
+
 
                 if (snippet.compilationSuccess) {
                     if (!hasMainMethod(snippet.sourceCode)) {
-                        snippet.executionOutput = "Class '" + className + "' compiled successfully, but no main method found.\n" +
+                        snippet.executionOutput = "Class '" + mainClassName + "' compiled successfully, but no main method found.\n" +
                                 "To run this code, add: public static void main(String[] args) {...}";
                         snippet.executionSuccess = true;
                         return snippet;
                     }
 
-                    ProcessBuilder javaProcessBuilder = new ProcessBuilder(
-                            "java",
-                            "-Xmx128m",
-                            "-Xss1m",
-                            "-cp", tempDir.toString(),
-                            className
-                    );
+                    long executionStart = System.currentTimeMillis();
 
-                    javaProcessBuilder.directory(tempDir.toFile());
-                    Process javaProcess = javaProcessBuilder.start();
-                    boolean executedInTime = javaProcess.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    ExecutionResult executionResult = executeCode(mainClassName, tempDir);
 
-                    if (!executedInTime) {
-                        javaProcess.destroyForcibly();
-                        snippet.executionOutput = "Execution timed out after " + PROCESS_TIMEOUT_SECONDS +
-                                " seconds.\nCheck for infinite loops or optimize your code.";
-                        snippet.executionSuccess = false;
-                        return snippet;
-                    }
+                    long executionEnd = System.currentTimeMillis();
+                    snippet.executionTimeMs = executionEnd - executionStart;
 
-                    String executionStdOut = new String(javaProcess.getInputStream().readAllBytes());
-                    String executionStdErr = new String(javaProcess.getErrorStream().readAllBytes());
-                    int javaExitCode = javaProcess.exitValue();
+                    snippet.executionOutput = executionResult.output;
+                    snippet.executionSuccess = executionResult.success;
 
-                    snippet.executionOutput = executionStdOut;
-                    if (!executionStdErr.isEmpty()) {
-                        snippet.executionOutput += "\n\nErrors/Warnings:\n" + executionStdErr;
-                    }
+                    Runtime runtime = Runtime.getRuntime();
+                    long usedMemoryBefore = runtime.totalMemory() - runtime.freeMemory();
+                    System.gc();
+                    long usedMemoryAfter = runtime.totalMemory() - runtime.freeMemory();
+                    snippet.peakMemoryBytes = Math.max(0, usedMemoryBefore - usedMemoryAfter);
 
-                    if (snippet.executionOutput.isEmpty()) {
-                        snippet.executionOutput = "Program executed successfully with no output.";
-                    }
-
-                    snippet.executionSuccess = javaExitCode == 0;
                 } else {
                     snippet.executionOutput = "Compilation failed, execution skipped.";
                     snippet.executionSuccess = false;
                 }
 
+                long totalTime = System.currentTimeMillis() - startTime;
+
                 return snippet;
             } catch (Exception e) {
+
                 snippet.compilationOutput = "Server error: " + e.getMessage();
                 snippet.compilationSuccess = false;
                 snippet.executionSuccess = false;
                 return snippet;
             } finally {
-                // Clean up temp files
                 if (tempDir != null) {
-                    deleteDirectory(tempDir.toFile());
+                    try {
+                        deleteDirectory(tempDir.toFile());
+                    } catch (Exception e) {
+                    }
                 }
             }
         });
     }
 
-    private String extractMainClassName(String sourceCode) {
-        Matcher matcher = CLASS_PATTERN.matcher(sourceCode);
+    private Path createSecureTempDirectory() throws IOException {
+        String baseTempDir = System.getProperty("java.io.tmpdir");
+        SecureRandom random = new SecureRandom();
+        String randomId = String.format("java-compiler-%016x", random.nextLong());
+        Path tempDir = Paths.get(baseTempDir, randomId);
+
+        try {
+            return Files.createDirectory(tempDir,
+                    PosixFilePermissions.asFileAttribute(
+                            PosixFilePermissions.fromString("rwx------")));
+        } catch (UnsupportedOperationException e) {
+            return Files.createDirectory(tempDir);
+        }
+    }
+
+    private CompilationResult compileCode(File sourceFile, Path workingDir) {
+        StringBuilder output = new StringBuilder();
+        boolean success = false;
+
+        try {
+            List<String> command = new ArrayList<>();
+            command.add("javac");
+            command.add("-Xlint:all");
+            command.add("-encoding");
+            command.add("UTF-8");
+            command.add(sourceFile.getAbsolutePath());
+
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+            processBuilder.directory(workingDir.toFile());
+            processBuilder.redirectErrorStream(true);
+
+            Process process = processBuilder.start();
+
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+
+            boolean completedInTime = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+            if (!completedInTime) {
+                process.destroyForcibly();
+                output.append("Compilation timed out after ")
+                        .append(PROCESS_TIMEOUT_SECONDS)
+                        .append(" seconds.\nYour code might be too complex or contain an error.");
+                return new CompilationResult(output.toString(), false);
+            }
+
+            int exitCode = process.exitValue();
+            success = (exitCode == 0);
+
+            if (success && output.length() == 0) {
+                output.append("Compilation successful");
+            }
+
+        } catch (Exception e) {
+            output.append("Compilation error: ").append(e.getMessage());
+            success = false;
+        }
+
+        return new CompilationResult(output.toString(), success);
+    }
+
+    private ExecutionResult executeCode(String className, Path workingDir) {
+        StringBuilder output = new StringBuilder();
+        boolean success = false;
+
+        try {
+            List<String> command = new ArrayList<>();
+            command.add("java");
+            command.add("-Xmx" + MAX_MEMORY_MB + "m");
+            command.add("-Xss" + STACK_SIZE_KB + "k");
+            command.add("-XX:+UseSerialGC");
+            command.add("-XX:MaxMetaspaceSize=64m");
+            command.add("-Djava.awt.headless=true");
+            command.add("-cp");
+            command.add(workingDir.toString());
+            command.add(className);
+
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+            processBuilder.directory(workingDir.toFile());
+            processBuilder.redirectErrorStream(true);
+
+            Process process = processBuilder.start();
+
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+
+            boolean completedInTime = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+            if (!completedInTime) {
+                process.destroyForcibly();
+                output.append("Execution timed out after ")
+                        .append(PROCESS_TIMEOUT_SECONDS)
+                        .append(" seconds.\nCheck for infinite loops or optimize your code.");
+                return new ExecutionResult(output.toString(), false);
+            }
+
+            int exitCode = process.exitValue();
+            success = (exitCode == 0);
+
+            if (output.length() == 0) {
+                output.append("Program executed successfully with no output.");
+            }
+
+        } catch (Exception e) {
+            output.append("Execution error: ").append(e.getMessage());
+            success = false;
+        }
+
+        return new ExecutionResult(output.toString().trim(), success);
+    }
+
+    private String extractPublicClassName(String sourceCode) {
+        Matcher matcher = PUBLIC_CLASS_PATTERN.matcher(sourceCode);
         if (matcher.find()) {
             return matcher.group(1);
         }
+
+        matcher = CLASS_NAME_PATTERN.matcher(sourceCode);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
         return null;
     }
 
     private boolean hasMainMethod(String sourceCode) {
-        return sourceCode.contains("public static void main(String[]") ||
-                sourceCode.contains("public static void main (String[]") ||
-                sourceCode.contains("public static void main( String[]") ||
-                sourceCode.contains("public static void main ( String[]");
+        return MAIN_METHOD_PATTERN.matcher(sourceCode).find();
     }
 
     private void deleteDirectory(File directory) {
@@ -145,11 +279,33 @@ public class CompilerService {
                     if (file.isDirectory()) {
                         deleteDirectory(file);
                     } else {
-                        file.delete();
+                        if (!file.delete()) {
+                        }
                     }
                 }
             }
-            directory.delete();
+            if (!directory.delete()) {
+            }
+        }
+    }
+
+    private static class CompilationResult {
+        final String output;
+        final boolean success;
+
+        CompilationResult(String output, boolean success) {
+            this.output = output;
+            this.success = success;
+        }
+    }
+
+    private static class ExecutionResult {
+        final String output;
+        final boolean success;
+
+        ExecutionResult(String output, boolean success) {
+            this.output = output;
+            this.success = success;
         }
     }
 }

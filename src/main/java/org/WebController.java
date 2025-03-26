@@ -20,4 +20,6 @@ public class WebController {
     public TemplateInstance index() {
         return index.instance();
     }
+
+
 }

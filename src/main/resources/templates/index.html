@@ -4,75 +4,247 @@
     <meta charset="UTF-8">
     <title>Online Java Compiler</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.min.js"></script>
     <style>
+        :root {
+            --primary-color: #4CAF50;
+            --accent-color: #388E3C;
+            --bg-color: #f5f5f5;
+            --card-bg: white;
+            --text-color: #333;
+            --border-color: #ccc;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
         }
+
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
+
         .header {
             text-align: center;
             margin-bottom: 20px;
         }
+
+        .header h1 {
+            margin-bottom: 5px;
+            color: var(--accent-color);
+        }
+
+        .header p {
+            color: #666;
+            margin-top: 0;
+        }
+
         .editor-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
+
         .editor {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--card-bg);
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .output {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background-color: white;
+
+        .editor-header {
+            background-color: #f0f0f0;
             padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-header select {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid var(--border-color);
+        }
+
+        .output {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--card-bg);
+            padding: 15px;
             height: 400px;
             overflow: auto;
-            font-family: monospace;
+            font-family: 'Consolas', monospace;
             white-space: pre-wrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
         .button-container {
             margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
         }
+
         button {
-            padding: 10px 15px;
-            background-color: #4CAF50;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-right: 10px;
+            transition: background-color 0.3s;
+            font-weight: 500;
         }
+
+        button:hover {
+            background-color: var(--accent-color);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background-color: #607D8B;
+        }
+
+        button.secondary:hover {
+            background-color: #455A64;
+        }
+
         .CodeMirror {
             height: 400px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
         }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+
         .tab {
-            display: inline-block;
             padding: 10px 15px;
-            margin-right: 5px;
-            background-color: #ddd;
             cursor: pointer;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 2px;
+            transition: all 0.3s;
         }
+
         .tab.active {
-            background-color: white;
-            border-top: 2px solid #4CAF50;
+            background-color: var(--card-bg);
+            border-bottom: 3px solid var(--primary-color);
+            font-weight: bold;
         }
+
         .tab-content {
             display: none;
         }
+
         .tab-content.active {
             display: block;
+        }
+
+        .metrics-panel {
+            background-color: #f9f9f9;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .metric {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .metric:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .loading {
+            position: relative;
+        }
+
+        .loading:after {
+            content: "Running...";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .success {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .error {
+            border-left: 4px solid #f44336;
+        }
+
+        .status-bar {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+
+        .status-bar.success {
+            background-color: #e8f5e9;
+            color: var(--accent-color);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .status-bar.error {
+            background-color: #ffebee;
+            color: #d32f2f;
+            border-left: 4px solid #f44336;
         }
     </style>
 </head>
@@ -80,16 +252,26 @@
 <div class="container">
     <div class="header">
         <h1>Online Java Compiler</h1>
+        <p>Compile and run Java code with performance metrics</p>
     </div>
 
     <div class="editor-container">
-        <div class="editor">
-                <textarea id="code-editor">
+        <div>
+            <div class="editor-header">
+                <span>Java Source Code</span>
+                <select id="theme-select">
+                    <option value="default">Default Theme</option>
+                    <option value="monokai">Monokai</option>
+                </select>
+            </div>
+            <div class="editor">
+                    <textarea id="code-editor">
 public class Main {
     public static void main(String[] args) {
         System.out.println("Hello, World!");
     }
 }</textarea>
+            </div>
         </div>
         <div>
             <div class="tabs">
@@ -101,33 +283,62 @@ public class Main {
         </div>
     </div>
 
+    <!-- Performance Metrics Panel -->
+    <div class="metrics-panel">
+        <div class="metric">
+            <div class="metric-value" id="compilation-time">-</div>
+            <div class="metric-label">Compilation Time (ms)</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value" id="execution-time">-</div>
+            <div class="metric-label">Execution Time (ms)</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value" id="memory-usage">-</div>
+            <div class="metric-label">Memory Usage (KB)</div>
+        </div>
+    </div>
+
+    <div id="status-message" class="status-bar"></div>
+
     <div class="button-container">
-        <button id="run-button">Compile & Run</button>
+        <button id="run-button"><span id="run-button-text">Compile & Run</span></button>
         <button id="save-button">Save Code</button>
-        <button id="clear-button">Clear</button>
+        <button id="clear-button" class="secondary">Clear</button>
     </div>
 </div>
 
 <script>
     let codeEditor;
+    let isRunning = false;
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize CodeMirror
         codeEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
             mode: 'text/x-java',
             lineNumbers: true,
             theme: 'default',
-            indentUnit: 4
+            indentUnit: 4,
+            smartIndent: true,
+            matchBrackets: true,
+            autoCloseBrackets: true,
+            styleActiveLine: true
         });
 
         document.getElementById('run-button').addEventListener('click', compileAndRun);
         document.getElementById('clear-button').addEventListener('click', function() {
             codeEditor.setValue('public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}');
-            document.getElementById('output').textContent = '';
-            document.getElementById('compilation').textContent = '';
+            clearOutputs();
         });
 
         document.getElementById('save-button').addEventListener('click', saveSnippet);
 
+        document.getElementById('theme-select').addEventListener('change', function() {
+            const theme = this.value;
+            codeEditor.setOption('theme', theme);
+        });
+
+        // Setup tab clicking
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 switchTab(this.getAttribute('data-tab'));
@@ -143,11 +354,39 @@ public class Main {
         document.getElementById(tabId).classList.add('active');
     }
 
+    function showStatus(message, isError = false) {
+        const statusBar = document.getElementById('status-message');
+        statusBar.textContent = message;
+        statusBar.classList.remove('success', 'error');
+        statusBar.classList.add(isError ? 'error' : 'success');
+        statusBar.style.display = 'block';
+
+        // Hide after 5 seconds
+        setTimeout(() => {
+            statusBar.style.display = 'none';
+        }, 5000);
+    }
+
+    function clearOutputs() {
+        document.getElementById('output').textContent = '';
+        document.getElementById('compilation').textContent = '';
+        document.getElementById('compilation-time').textContent = '-';
+        document.getElementById('execution-time').textContent = '-';
+        document.getElementById('memory-usage').textContent = '-';
+        document.getElementById('status-message').style.display = 'none';
+    }
+
     function compileAndRun() {
+        if (isRunning) return;
+
+        isRunning = true;
         const sourceCode = codeEditor.getValue();
 
-        document.getElementById('output').textContent = 'Running...';
-        document.getElementById('compilation').textContent = '';
+        document.getElementById('run-button').disabled = true;
+        document.getElementById('run-button-text').textContent = 'Running...';
+        document.getElementById('output').parentElement.classList.add('loading');
+
+        clearOutputs();
 
         fetch('/api/compiler', {
             method: 'POST',
@@ -160,19 +399,50 @@ public class Main {
                 title: 'Untitled'
             })
         })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network error: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
                 document.getElementById('compilation').textContent = data.compilationOutput || 'Compilation successful';
+                document.getElementById('compilation').classList.toggle('error', !data.compilationSuccess);
+                document.getElementById('compilation').classList.toggle('success', data.compilationSuccess);
+
                 document.getElementById('output').textContent = data.executionOutput || 'No output';
+                document.getElementById('output').classList.toggle('error', !data.executionSuccess);
+                document.getElementById('output').classList.toggle('success', data.executionSuccess && data.compilationSuccess);
+
+                // Update metrics
+                document.getElementById('compilation-time').textContent = data.compilationTimeMs;
+                document.getElementById('execution-time').textContent = data.compilationSuccess ? data.executionTimeMs : '-';
+                document.getElementById('memory-usage').textContent = data.compilationSuccess ? Math.round(data.peakMemoryBytes / 1024) : '-';
 
                 if (!data.compilationSuccess) {
                     switchTab('compilation');
+                    showStatus('Compilation failed. Check errors.', true);
+                } else if (!data.executionSuccess) {
+                    switchTab('output');
+                    showStatus('Execution failed. Check output for errors.', true);
                 } else {
                     switchTab('output');
+                    showStatus('Code executed successfully!');
                 }
             })
             .catch(error => {
-                document.getElementById('output').textContent = 'Error: ' + error;
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+                document.getElementById('output').classList.add('error');
+                document.getElementById('compilation-time').textContent = '-';
+                document.getElementById('execution-time').textContent = '-';
+                document.getElementById('memory-usage').textContent = '-';
+                showStatus('Error: ' + error.message, true);
+            })
+            .finally(() => {
+                isRunning = false;
+                document.getElementById('run-button').disabled = false;
+                document.getElementById('run-button-text').textContent = 'Compile & Run';
+                document.getElementById('output').parentElement.classList.remove('loading');
             });
     }
 
@@ -185,10 +455,19 @@ public class Main {
         var blobOptions = {};
         blobOptions.type = 'text/plain';
         const blob = new Blob([sourceCode], blobOptions);
+        const url = URL.createObjectURL(blob);
+
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
+        link.href = url;
         link.download = title;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        {!showStatus(`Code saved as ${title}`);!}
+
+
     }
 </script>
 </body>
