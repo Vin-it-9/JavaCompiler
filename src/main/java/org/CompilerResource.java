@@ -17,4 +17,5 @@ public class CompilerResource {
     public CompletionStage<CodeSnippet> compileAndRun(CodeSnippet snippet) {
         return compilerService.compileAndRun(snippet);
     }
+
 }

@@ -112,7 +112,6 @@ public class Main {
     let codeEditor;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize CodeMirror
         codeEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
             mode: 'text/x-java',
             lineNumbers: true,
@@ -129,7 +128,6 @@ public class Main {
 
         document.getElementById('save-button').addEventListener('click', saveSnippet);
 
-        // Setup tab clicking
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 switchTab(this.getAttribute('data-tab'));
