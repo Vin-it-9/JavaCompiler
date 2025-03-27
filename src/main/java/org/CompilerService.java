@@ -16,9 +16,9 @@ import java.util.regex.*;
 @ApplicationScoped
 public class CompilerService {
 
-    private static final long PROCESS_TIMEOUT_SECONDS = 10;      
-    private static final int MAX_MEMORY_MB = 256;
-    private static final int STACK_SIZE_KB = 1024;
+    private static final long PROCESS_TIMEOUT_SECONDS = 30;
+    private static final int MAX_MEMORY_MB = 1024;
+    private static final int STACK_SIZE_KB = 8192;
     private static final int MAX_SOURCE_SIZE_KB = 1000;
     private static final int IO_BUFFER_SIZE = 65536;
     private static final long JVM_OVERHEAD_BYTES = 1024 * 1024;
