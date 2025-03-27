@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Java Compiler</title>
+    <title>Java Compiler</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
@@ -353,7 +353,10 @@ import java.io.*;
 
 public class Main {
     public static void main(String[] args) {
+
         System.out.println("Quarkus Supersonic Subatomic Java");
+
+
     }
 }
 </textarea>
@@ -524,7 +527,6 @@ public class Main {
             document.getElementById('clear-button').addEventListener('click', clearEditor);
             document.getElementById('save-button').addEventListener('click', saveSnippet);
 
-            // Theme change handler
             document.getElementById('theme-select').addEventListener('change', function() {
                 const theme = this.value;
                 monaco.editor.setTheme(theme);
@@ -537,14 +539,12 @@ public class Main {
                 }
             });
 
-            // Tab switch handler
             document.querySelectorAll('.custom-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     switchTab(this.getAttribute('data-tab'));
                 });
             });
 
-            // Keyboard shortcuts
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'F9') {
                     e.preventDefault();
@@ -562,14 +562,10 @@ public class Main {
                 }
             });
 
-            // Handle package suggestion
             document.getElementById('add-package-btn').addEventListener('click', function() {
                 const currentValue = editor.getValue();
 
                 if (!currentValue.trim().startsWith('package')) {
-
-
-                    // Hide the suggestion after adding
                     document.getElementById('package-suggestion').style.display = 'none';
                 }
             });
@@ -578,6 +574,9 @@ public class Main {
 
     function initMonacoEditor() {
         const initialCode = document.getElementById('code-editor').value;
+        const DIAGNOSTICS_DELAY = 500;
+        let errorDecorations = [];
+        let diagnosticsTimeout = null;
 
         monaco.languages.registerCompletionItemProvider('java', {
             provideCompletionItems: function(model, position) {
@@ -661,9 +660,16 @@ public class Main {
                     {
                         label: 'fori',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'for (int i = 0; i < max; i++) {\n\t\n}',
+                        insertText: 'for (int i = 0; i < 5; i++) {\n\t\n}',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         documentation: 'For loop with index'
+                    },
+                    {
+                        label: 'forEach',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'for (int i : ) {\n\t\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'For Each loop'
                     },
                     {
                         label: 'trycatch',
@@ -681,7 +687,6 @@ public class Main {
                     });
                 }
 
-                // Context-aware suggestions
                 if (linePrefix.endsWith('System.')) {
                     suggestions.push({
                         label: 'out',
@@ -730,10 +735,340 @@ public class Main {
             }
         });
 
+
+        function checkJavaSyntax(code) {
+            if (!code || !editor || !editor.getModel()) {
+                return 0;
+            }
+
+            const errors = [];
+            const lines = code.split('\n');
+            const model = editor.getModel();
+
+            // Clear previous markers
+            monaco.editor.setModelMarkers(model, 'java-syntax', []);
+
+            // Track multi-line comments and strings
+            let inMultiLineComment = false;
+            let inMultiLineString = false;
+            let braceBalance = 0;
+            let parenBalance = 0;
+            let bracketBalance = 0;
+
+            // Track for class/method structure
+            let hasPackageDeclaration = false;
+            let hasClassDeclaration = false;
+            let hasMainMethod = false;
+
+            // First pass - check for package and imports
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith("package ")) {
+                    hasPackageDeclaration = true;
+                    if (i > 2) { // Allow some flexibility for initial comments
+                        errors.push({
+                            startLineNumber: i + 1,
+                            startColumn: 1,
+                            endLineNumber: i + 1,
+                            endColumn: lines[i].length + 1,
+                            message: 'Package declaration should be at the beginning of the file',
+                            severity: monaco.MarkerSeverity.Warning
+                        });
+                    }
+                    break;
+                }
+            }
+
+            // Process line by line
+            for (let i = 0; i < lines.length; i++) {
+                const lineNumber = i + 1;
+                const line = lines[i];
+                const trimmedLine = line.trim();
+
+                // Skip empty lines
+                if (trimmedLine.length === 0) continue;
+
+                // Process multi-line comments
+                if (inMultiLineComment) {
+                    if (line.includes("*/")) {
+                        inMultiLineComment = false;
+                        continue;
+                    } else {
+                        continue; // Skip checking this line if inside a multi-line comment
+                    }
+                }
+
+                // Check for comment starts
+                if (line.includes("/*")) {
+                    inMultiLineComment = true;
+                    if (line.includes("*/")) {
+                        inMultiLineComment = false;
+                    }
+                    continue;
+                }
+
+                // Skip single-line comments
+                if (trimmedLine.startsWith("//")) {
+                    continue;
+                }
+
+                // Remove inline comments for processing, but keep track of original line
+                let processedLine = line;
+                const commentIndex = processedLine.indexOf("//");
+                if (commentIndex !== -1) {
+                    processedLine = processedLine.substring(0, commentIndex);
+                }
+
+                // Check for class declarations
+                if (processedLine.match(/\b(class|interface|enum)\b/)) {
+                    hasClassDeclaration = true;
+                }
+
+                // Check for main method - with a more precise pattern
+                const mainMethodCheck = processedLine.match(/\bpublic\s+static\s+void\s+main\s*\(\s*String(\s*\[\]|\[\]\s+)\s*\w+\s*\)/);
+                if (mainMethodCheck) {
+                    hasMainMethod = true;
+                }
+
+                // Check for statements that should end with semicolons
+                const skipSemicolonCheck =
+                    processedLine.match(/\b(if|for|while|switch|try|catch|finally|else)\b/) || // Control structures
+                    processedLine.match(/\b(class|interface|enum)\b/) || // Type declarations
+                    processedLine.match(/\b(public|private|protected|abstract|static|final|native|synchronized|transient|volatile)\b.*\{/) || // Method/class with open brace
+                processedLine.match(/\)\s*\{/) || // Method body open
+                processedLine.endsWith("{") || processedLine.endsWith("}") ||
+                processedLine.endsWith("(") || processedLine.endsWith(")") ||
+                processedLine.trim() === "";
+
+                if (!processedLine.endsWith(";") && !skipSemicolonCheck) {
+                    // Only check certain statement patterns for semicolons
+                    if (processedLine.match(/^(return|break|continue|throw)\s+.+/) ||
+                        processedLine.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+\s*=.+/) ||
+                        processedLine.match(/\w+\s*=\s*.+/) ||
+                        processedLine.match(/new\s+\w+\(.+\)/) ||
+                        processedLine.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+/)) {
+
+                        errors.push({
+                            startLineNumber: lineNumber,
+                            startColumn: 1,
+                            endLineNumber: lineNumber,
+                            endColumn: line.length + 1,
+                            message: 'Missing semicolon',
+                            severity: monaco.MarkerSeverity.Error
+                        });
+                    }
+                }
+
+                // Check for balanced braces, parentheses, and brackets - but NOT on class or method lines
+                const openBraces = (processedLine.match(/\{/g) || []).length;
+                const closeBraces = (processedLine.match(/\}/g) || []).length;
+                const openParens = (processedLine.match(/\(/g) || []).length;
+                const closeParens = (processedLine.match(/\)/g) || []).length;
+                const openBrackets = (processedLine.match(/\[/g) || []).length;
+                const closeBrackets = (processedLine.match(/\]/g) || []).length;
+
+                braceBalance += openBraces - closeBraces;
+                parenBalance += openParens - closeParens;
+                bracketBalance += openBrackets - closeBrackets;
+
+                // Completely skip brace balance warnings if line contains class, method definitions or closing braces
+                // This is more comprehensive than the previous approach
+                const skipBraceBalanceWarning =
+                    processedLine.match(/\b(class|interface|enum|void)\b/) || // Class or method declarations
+                    processedLine.match(/\w+\s*\([^)]*\)\s*\{/) ||          // Method with parameters
+                processedLine.match(/\b(public|private|protected)\b.*\(/) || // Method modifiers
+                processedLine.match(/\b(if|for|while|switch|try|catch)\b.*\{/) || // Control structures
+                processedLine.match(/\}\s*else\s*\{/) ||                // else blocks
+                processedLine === "}" ||                                // Just a closing brace
+                processedLine.endsWith("}") ||                          // Line ends with closing brace
+                (openBraces === 0 && closeBraces === 0);                // No braces at all
+
+                if (openBraces !== closeBraces && !skipBraceBalanceWarning) {
+                    errors.push({
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: line.length + 1,
+                        message: 'Unbalanced braces in this line',
+                        severity: monaco.MarkerSeverity.Warning
+                    });
+                }
+
+                // Only check parentheses balance if not a method or control structure declaration
+                const skipParenBalanceWarning =
+                    processedLine.match(/\b(if|for|while|switch|catch)\b/) ||
+                    processedLine.match(/\b(class|interface|enum|void)\b.*\(/) ||
+                    processedLine.match(/\w+\s*\([^)]*\)/);
+
+                if (openParens !== closeParens && !skipParenBalanceWarning) {
+                    errors.push({
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: line.length + 1,
+                        message: 'Unbalanced parentheses in this line',
+                        severity: monaco.MarkerSeverity.Warning
+                    });
+                }
+
+                // Check for bracketed array declarations
+                const skipBracketBalanceWarning =
+                    processedLine.match(/\b(String|int|boolean|double|float|long|char|byte|short)\s*\[\]/) ||
+                    processedLine.match(/\bnew\b.*\[.*\]/);
+
+                if (openBrackets !== closeBrackets && !skipBracketBalanceWarning) {
+                    errors.push({
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: line.length + 1,
+                        message: 'Unbalanced brackets in this line',
+                        severity: monaco.MarkerSeverity.Warning
+                    });
+                }
+
+                // Check for string literals with improved detection
+                let inString = false;
+                let escapeNext = false;
+                let unclosedString = false;
+
+                for (let j = 0; j < processedLine.length; j++) {
+                    const char = processedLine[j];
+
+                    if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                    }
+
+                    if (char === '\\' && inString) {
+                        escapeNext = true;
+                        continue;
+                    }
+
+                    if (char === '"') {
+                        inString = !inString;
+                    }
+                }
+
+                if (inString) {
+                    unclosedString = true;
+                }
+
+                if (unclosedString) {
+                    errors.push({
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: line.length + 1,
+                        message: 'Unclosed string literal',
+                        severity: monaco.MarkerSeverity.Error
+                    });
+                }
+
+                // Import statement check
+                if (trimmedLine.startsWith('import ') && hasClassDeclaration) {
+                    errors.push({
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: line.length + 1,
+                        message: 'Import statements should come before class/interface declarations',
+                        severity: monaco.MarkerSeverity.Warning
+                    });
+                }
+
+                // Check for common typos and suggest corrections
+                const commonTypos = {
+                    'pubic': 'public',
+                    'statc': 'static',
+                    'vod': 'void',
+                    'finall': 'final',
+                    'retrun': 'return',
+                    'psvm': 'public static void main',
+                    'tostring': 'toString',
+                    'Srting': 'String',
+                    'Interger': 'Integer',
+                    'boolan': 'boolean',
+                    'printn': 'println',
+                    'lenght': 'length',
+                    'flaot': 'float',
+                    'flase': 'false',
+                    'ture': 'true',
+                    'NullPointerEception': 'NullPointerException'
+                };
+
+                Object.keys(commonTypos).forEach(typo => {
+                    const regex = new RegExp('\\b' + typo + '\\b', 'g');
+                    let match;
+
+                    while ((match = regex.exec(processedLine)) !== null) {
+                        errors.push({
+                            startLineNumber: lineNumber,
+                            startColumn: match.index + 1,
+                            endLineNumber: lineNumber,
+                            endColumn: match.index + typo.length + 1,
+                            message: 'Possible typo: \'' + typo + '\'. Did you mean \'' + commonTypos[typo] + '\'?',
+                            severity: monaco.MarkerSeverity.Warning
+                        });
+                    }
+                });
+            }
+
+            // Check for overall structure issues
+            if (hasClassDeclaration && !hasMainMethod) {
+                errors.push({
+                    startLineNumber: 1,
+                    startColumn: 1,
+                    endLineNumber: 1,
+                    endColumn: 10,
+                    message: 'No main method found. Add "public static void main(String[] args)" for a runnable program.',
+                    severity: monaco.MarkerSeverity.Hint
+                });
+            }
+
+            // Check overall brace, parentheses, and bracket balance
+            if (braceBalance !== 0) {
+                errors.push({
+                    startLineNumber: lines.length,
+                    startColumn: lines[lines.length - 1].length + 1,
+                    endLineNumber: lines.length,
+                    endColumn: lines[lines.length - 1].length + 1,
+                    message: braceBalance > 0 ? 'Missing closing brace(s)' : 'Extra closing brace(s)',
+                    severity: monaco.MarkerSeverity.Error
+                });
+            }
+
+            if (parenBalance !== 0) {
+                errors.push({
+                    startLineNumber: lines.length,
+                    startColumn: lines[lines.length - 1].length + 1,
+                    endLineNumber: lines.length,
+                    endColumn: lines[lines.length - 1].length + 1,
+                    message: parenBalance > 0 ? 'Missing closing parenthesis' : 'Extra closing parenthesis',
+                    severity: monaco.MarkerSeverity.Error
+                });
+            }
+
+            if (bracketBalance !== 0) {
+                errors.push({
+                    startLineNumber: lines.length,
+                    startColumn: lines[lines.length - 1].length + 1,
+                    endLineNumber: lines.length,
+                    endColumn: lines[lines.length - 1].length + 1,
+                    message: bracketBalance > 0 ? 'Missing closing bracket(s)' : 'Extra closing bracket(s)',
+                    severity: monaco.MarkerSeverity.Error
+                });
+            }
+
+            monaco.editor.setModelMarkers(model, 'java-syntax', errors);
+
+            return errors.length;
+        }
+
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
-            theme: 'vs-dark', // Changed default theme to VS Code Dark
+            theme: 'vs-dark',
             automaticLayout: true,
             fontSize: 15,
             fontFamily: 'JetBrains Mono, Fira Code, Consolas, "Liberation Mono", Menlo, monospace',
@@ -753,39 +1088,58 @@ public class Main {
             mouseWheelZoom: true,
             bracketPairColorization: {
                 enabled: true
-            }
+            },
+            formatOnType: true,
+            glyphMargin: true,
+            lightbulb: {
+                enabled: true
+            },
+            renderValidationDecorations: 'on'
         });
 
-        // Update editor container style for VS Code theme
         document.getElementById('editor-container').className = 'editor-area';
 
         editor.onDidChangeModelContent(function() {
             updateCharCount();
             document.getElementById('code-editor').value = editor.getValue();
 
-            // Check if we should show package suggestion
-            checkForPackageSuggestion();
+            clearTimeout(diagnosticsTimeout);
+            diagnosticsTimeout = setTimeout(() => {
+                checkJavaSyntax(editor.getValue());
+            }, DIAGNOSTICS_DELAY);
 
-            try {
-                localStorage.setItem('javaEditorCode', editor.getValue());
-            } catch (e) {
-                console.error("Error saving to localStorage", e);
+        });
+
+        monaco.languages.registerHoverProvider('java', {
+            provideHover: function(model, position) {
+                const markers = monaco.editor.getModelMarkers({
+                    resource: model.uri
+                });
+
+                for (const marker of markers) {
+                    if (marker.startLineNumber <= position.lineNumber &&
+                        marker.endLineNumber >= position.lineNumber &&
+                        marker.startColumn <= position.column &&
+                        marker.endColumn >= position.column) {
+
+                        return {
+                            contents: [
+                                { value: '**' + (marker.severity === 8 ? 'Error' : marker.severity === 4 ? 'Warning' : 'Info') + '**' },                                { value: marker.message }
+                            ]
+                        };
+                    }
+                }
+
+                return null;
             }
         });
 
+        setTimeout(() => {
+            checkJavaSyntax(editor.getValue());
+        }, 1000);
+
         updateCharCount();
-
-        try {
-            const savedCode = localStorage.getItem('javaEditorCode');
-            if (savedCode) {
-                editor.setValue(savedCode);
-                document.getElementById('code-editor').value = savedCode;
-            }
-        } catch (e) {
-            console.error("Error loading from localStorage", e);
-        }
     }
-
     // init monaco editor ends here
 
     function updateCharCount() {
