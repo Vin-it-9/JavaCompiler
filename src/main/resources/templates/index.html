@@ -573,15 +573,20 @@ public class Main {
     });
 
     function initMonacoEditor() {
+
         const initialCode = document.getElementById('code-editor').value;
         const DIAGNOSTICS_DELAY = 500;
         let errorDecorations = [];
         let diagnosticsTimeout = null;
 
         monaco.languages.registerCompletionItemProvider('java', {
+
             provideCompletionItems: function(model, position) {
+
                 const suggestions = [];
+
                 const word = model.getWordUntilPosition(position);
+
                 const range = {
                     startLineNumber: position.lineNumber,
                     endLineNumber: position.lineNumber,
@@ -602,8 +607,11 @@ public class Main {
                     'instanceof', 'int', 'interface', 'long', 'native', 'new', 'package',
                     'private', 'protected', 'public', 'return', 'short', 'static', 'strictfp',
                     'super', 'switch', 'synchronized', 'this', 'throw', 'throws', 'transient',
-                    'try', 'void', 'volatile', 'while', 'true', 'false', 'null'
+                    'try', 'void', 'volatile', 'while', 'true', 'false', 'null',
+                    'goto', 'var', 'record','yield','sealed','permits','non-sealed'
+
                 ];
+
 
                 for (const keyword of keywords) {
                     suggestions.push({
@@ -630,7 +638,10 @@ public class Main {
                     'Future', 'CompletableFuture', 'Executor', 'ExecutorService', 'ScheduledExecutorService',
                     'Period', 'Duration', 'Instant', 'ZonedDateTime', 'OffsetDateTime', 'YearMonth',
                     'NumberFormat', 'SimpleDateFormat', 'DateTimeFormatter', 'Currency', 'Locale',
-                    'Properties', 'UUID', 'URL', 'URI', 'InetAddress', 'Socket', 'ServerSocket'
+                    'Properties', 'UUID', 'URL', 'URI', 'InetAddress', 'Socket', 'ServerSocket',
+                    'Runtime', 'Class', 'Void', 'Throwable', 'Error', 'ThreadLocal', 'ClassLoader',
+                    'HashSet', 'LinkedHashMap', 'LinkedHashSet', 'EnumSet', 'EnumMap',
+                    'ConcurrentHashMap', 'CopyOnWriteArrayList'
                 ];
 
                 for (const className of javaClasses) {
@@ -642,50 +653,120 @@ public class Main {
                     });
                 }
 
-                const snippets = [
+                    const snippets = [
+                    // Regular Java snippets
                     {
                         label: 'sout',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'System.out.println();',
+                        insertText: 'System.out.println(${1});',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         documentation: 'Print to standard output'
                     },
                     {
                         label: 'psvm',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'public static void main(String[] args) {\n\t\n}',
+                        insertText: 'public static void main(String[] args) {\n\t${0}\n}',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Public static void main'
+                        documentation: 'Main method'
                     },
+                        {
+                            label: 'main',
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: 'public static void main(String[] args) {\n\t${0}\n}',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: 'Main method'
+                        },
                     {
                         label: 'fori',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'for (int i = 0; i < 5; i++) {\n\t\n}',
+                        insertText: 'for (int i = 0; i < ${1}; i++) {\n\t${0}\n}',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         documentation: 'For loop with index'
                     },
                     {
                         label: 'forEach',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'for (int i : ) {\n\t\n}',
+                        insertText: 'for (int i : ${1}) {\n\t${0}\n}',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'For Each loop'
+                        documentation: 'For-each loop'
                     },
                     {
                         label: 'trycatch',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'try {\n\t\n} catch (Exception e) {\n\te.printStackTrace();\n}',
+                        insertText: 'try {\n\t${0}\n} catch (Exception e) {\n\te.printStackTrace();\n}',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         documentation: 'Try-catch block'
-                    }
-                ];
+                    },
+                    {
+                        label: 'if',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'if (${1}) {\n\t${0}\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'If statement'
+                    },
+                    {
+                        label: 'ifelse',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'if (${1}) {\n\t${2}\n} else {\n\t${0}\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'If-Else statement'
+                    },
+                    {
+                        label: 'while',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'while (${1}) {\n\t${0}\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'While loop'
+                    },
+                    {
+                        label: 'dowhile',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'do {\n\t${0}\n} while (${1});',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Do-While loop'
+                    },
+                    {
+                        label: 'switch',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'switch (${1}) {\n\tcase ${2}:\n\t\t${0}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Switch statement'
+                    },
 
-                for (const snippet of snippets) {
+                    {
+                        label: 'lambda',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: '(${1}) -> {\n\t${0}\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Lambda expression'
+                    },
+                    {
+                        label: 'synchronized',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'synchronized (${1}) {\n\t${0}\n}',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Synchronized block'
+                    },
+
+                    {
+                        label: 'switchExpr',
+                        kind: monaco.languages.CompletionItemKind.Snippet,
+                        insertText: 'var result = switch (${1}) {\n\tcase ${2} -> ${0};\n\tdefault -> throw new IllegalStateException("Unexpected value: " + ${1});\n};',
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: 'Switch expression (Java 12+)'
+                    },
+
+              ];
+
+
+            for (const snippet of snippets) {
                     suggestions.push({
                         ...snippet,
                         range: range
                     });
                 }
+
+            // above code is for the snippits
 
                 if (linePrefix.endsWith('System.')) {
                     suggestions.push({
@@ -703,6 +784,39 @@ public class Main {
                         range: range,
                         documentation: 'The standard error stream'
                     });
+
+                    suggestions.push({
+                        label: 'in',
+                        kind: monaco.languages.CompletionItemKind.Field,
+                        insertText: 'in',
+                        range: range,
+                        documentation: 'The standard input stream'
+                    });
+
+                    suggestions.push({
+                        label: 'currentTimeMillis',
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: 'currentTimeMillis()',
+                        range: range,
+                        documentation: 'Returns the current time in milliseconds'
+                    });
+
+                    suggestions.push({
+                        label: 'nanoTime',
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: 'nanoTime()',
+                        range: range,
+                        documentation: 'Returns the current value of the most precise available system timer, in nanoseconds'
+                    });
+
+                    suggestions.push({
+                        label: 'gc',
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: 'gc()',
+                        range: range,
+                        documentation: 'Runs the garbage collector'
+                    });
+
                 }
 
                 if (linePrefix.endsWith('System.out.')) {
@@ -729,13 +843,14 @@ public class Main {
                         range: range,
                         documentation: 'Print formatted text'
                     });
-                }
 
+                }
                 return { suggestions };
             }
+            // above code is for suggestions
         });
 
-
+        // below add the java syntax
         function checkJavaSyntax(code) {
             if (!code || !editor || !editor.getModel()) {
                 return 0;
@@ -965,7 +1080,6 @@ public class Main {
                     });
                 }
 
-                // Import statement check
                 if (trimmedLine.startsWith('import ') && hasClassDeclaration) {
                     errors.push({
                         startLineNumber: lineNumber,
@@ -977,7 +1091,6 @@ public class Main {
                     });
                 }
 
-                // Check for common typos and suggest corrections
                 const commonTypos = {
                     'pubic': 'public',
                     'statc': 'static',
@@ -1065,6 +1178,7 @@ public class Main {
             return errors.length;
         }
 
+        // above add the java syntax
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
@@ -1115,13 +1229,11 @@ public class Main {
                 const markers = monaco.editor.getModelMarkers({
                     resource: model.uri
                 });
-
                 for (const marker of markers) {
                     if (marker.startLineNumber <= position.lineNumber &&
                         marker.endLineNumber >= position.lineNumber &&
                         marker.startColumn <= position.column &&
                         marker.endColumn >= position.column) {
-
                         return {
                             contents: [
                                 { value: '**' + (marker.severity === 8 ? 'Error' : marker.severity === 4 ? 'Warning' : 'Info') + '**' },                                { value: marker.message }
@@ -1347,7 +1459,6 @@ public class Main {
         requestAnimationFrame(updateValue);
     }
 
-    // save code file starts here Main.java
     function saveSnippet() {
         const sourceCode = editor.getValue();
         const title = prompt('Enter filename to save as:', 'Main.java');
