@@ -502,7 +502,6 @@ public class Main {
                 }
             });
 
-
             monaco.editor.defineTheme('monokai', {
                 base: 'vs-dark',
                 inherit: true,
@@ -996,7 +995,6 @@ public class Main {
                     };
                 }
 
-
                 return { suggestions };
             }
         });
@@ -1007,26 +1005,58 @@ public class Main {
                 return 0;
             }
 
-            const errors = [];
-            const lines = code.split('\n');
             const model = editor.getModel();
+            const lines = code.split('\n');
+            const errors = [];
 
             monaco.editor.setModelMarkers(model, 'java-syntax', []);
 
-            let inMultiLineComment = false;
-            let inMultiLineString = false;
-            let braceBalance = 0;
-            let parenBalance = 0;
-            let bracketBalance = 0;
+            const codeState = {
+                inMultiLineComment: false,
+                inMultiLineString: false,
+                braceBalance: 0,
+                parenBalance: 0,
+                bracketBalance: 0,
+                hasPackageDeclaration: false,
+                hasClassDeclaration: false,
+                hasMainMethod: false,
+                importsStartLine: -1,
+                importsEndLine: -1,
+                classDeclarationLine: -1
+            };
 
-            let hasPackageDeclaration = false;
-            let hasClassDeclaration = false;
-            let hasMainMethod = false;
+            const javaStructure = {
+                isComment: (line) => line.trim().startsWith("//") || line.includes("/*"),
+                isImport: (line) => line.trim().startsWith("import "),
+                isPackage: (line) => line.trim().startsWith("package "),
+                isClassDeclaration: (line) => /\b(class|interface|enum)\b/.test(line),
+                isMainMethod: (line) => /\bpublic\s+static\s+void\s+main\s*\(\s*String(\s*\[\]|\[\]\s+)\s*\w+\s*\)/.test(line),
+                shouldSkipSemicolonCheck: (line) => {
+                    return line.match(/\b(if|for|while|switch|try|catch|finally|else)\b/) ||
+                        line.match(/\b(class|interface|enum)\b/) ||
+                        line.match(/\b(public|private|protected|abstract|static|final|native|synchronized|transient|volatile)\b.*\{/) ||
+                    line.match(/\)\s*\{/) ||
+                    line.endsWith("{") || line.endsWith("}") ||
+                    line.endsWith("(") || line.endsWith(")") ||
+                    line.trim() === "";
+                },
+                needsSemicolon: (line) => {
+                    return line.match(/^(return|break|continue|throw)\s+.+/) ||
+                        line.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+\s*=.+/) ||
+                        line.match(/\w+\s*=\s*.+/) ||
+                        line.match(/new\s+\w+\(.+\)/) ||
+                        line.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+/);
+                }
+            };
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
-                if (line.startsWith("package ")) {
-                    hasPackageDeclaration = true;
+
+                if (line.length === 0) continue;
+
+                if (javaStructure.isPackage(line)) {
+                    codeState.hasPackageDeclaration = true;
+
                     if (i > 2) {
                         errors.push({
                             startLineNumber: i + 1,
@@ -1037,8 +1067,45 @@ public class Main {
                             severity: monaco.MarkerSeverity.Warning
                         });
                     }
-                    break;
                 }
+
+                if (javaStructure.isImport(line)) {
+                    if (codeState.importsStartLine === -1) {
+                        codeState.importsStartLine = i;
+                    }
+                    codeState.importsEndLine = i;
+                }
+
+                if (javaStructure.isClassDeclaration(line)) {
+                    codeState.hasClassDeclaration = true;
+                    codeState.classDeclarationLine = i;
+
+                    if (codeState.importsEndLine > i) {
+                        errors.push({
+                            startLineNumber: codeState.importsEndLine + 1,
+                            startColumn: 1,
+                            endLineNumber: codeState.importsEndLine + 1,
+                            endColumn: lines[codeState.importsEndLine].length + 1,
+                            message: 'Import statements should come before class declarations',
+                            severity: monaco.MarkerSeverity.Warning
+                        });
+                    }
+                }
+
+                if (javaStructure.isMainMethod(line)) {
+                    codeState.hasMainMethod = true;
+                }
+            }
+
+            if (!codeState.hasPackageDeclaration && codeState.hasClassDeclaration && lines.length > 10) {
+                errors.push({
+                    startLineNumber: 1,
+                    startColumn: 1,
+                    endLineNumber: 1,
+                    endColumn: 10,
+                    message: 'Consider adding a package declaration for better organization',
+                    severity: monaco.MarkerSeverity.Hint
+                });
             }
 
             for (let i = 0; i < lines.length; i++) {
@@ -1048,19 +1115,17 @@ public class Main {
 
                 if (trimmedLine.length === 0) continue;
 
-                if (inMultiLineComment) {
+                if (codeState.inMultiLineComment) {
                     if (line.includes("*/")) {
-                        inMultiLineComment = false;
-                        continue;
-                    } else {
-                        continue;
+                        codeState.inMultiLineComment = false;
                     }
+                    continue;
                 }
 
                 if (line.includes("/*")) {
-                    inMultiLineComment = true;
+                    codeState.inMultiLineComment = true;
                     if (line.includes("*/")) {
-                        inMultiLineComment = false;
+                        codeState.inMultiLineComment = false;
                     }
                     continue;
                 }
@@ -1075,39 +1140,25 @@ public class Main {
                     processedLine = processedLine.substring(0, commentIndex);
                 }
 
-                if (processedLine.match(/\b(class|interface|enum)\b/)) {
-                    hasClassDeclaration = true;
+                if (javaStructure.isClassDeclaration(processedLine)) {
+                    codeState.hasClassDeclaration = true;
                 }
 
-                const mainMethodCheck = processedLine.match(/\bpublic\s+static\s+void\s+main\s*\(\s*String(\s*\[\]|\[\]\s+)\s*\w+\s*\)/);
-                if (mainMethodCheck) {
-                    hasMainMethod = true;
+                if (javaStructure.isMainMethod(processedLine)) {
+                    codeState.hasMainMethod = true;
                 }
-                const skipSemicolonCheck =
-                    processedLine.match(/\b(if|for|while|switch|try|catch|finally|else)\b/) || // Control structures
-                    processedLine.match(/\b(class|interface|enum)\b/) || // Type declarations
-                    processedLine.match(/\b(public|private|protected|abstract|static|final|native|synchronized|transient|volatile)\b.*\{/) || // Method/class with open brace
-                processedLine.match(/\)\s*\{/) || // Method body open
-                processedLine.endsWith("{") || processedLine.endsWith("}") ||
-                processedLine.endsWith("(") || processedLine.endsWith(")") ||
-                processedLine.trim() === "";
 
-                if (!processedLine.endsWith(";") && !skipSemicolonCheck) {
-                    if (processedLine.match(/^(return|break|continue|throw)\s+.+/) ||
-                        processedLine.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+\s*=.+/) ||
-                        processedLine.match(/\w+\s*=\s*.+/) ||
-                        processedLine.match(/new\s+\w+\(.+\)/) ||
-                        processedLine.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+/)) {
+                const skipSemicolonCheck = javaStructure.shouldSkipSemicolonCheck(processedLine);
 
-                        errors.push({
-                            startLineNumber: lineNumber,
-                            startColumn: 1,
-                            endLineNumber: lineNumber,
-                            endColumn: line.length + 1,
-                            message: 'Missing semicolon',
-                            severity: monaco.MarkerSeverity.Error
-                        });
-                    }
+                if (!processedLine.endsWith(";") && !skipSemicolonCheck && javaStructure.needsSemicolon(processedLine)) {
+                    errors.push({
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: line.length + 1,
+                        message: 'Missing semicolon',
+                        severity: monaco.MarkerSeverity.Error
+                    });
                 }
 
                 const openBraces = (processedLine.match(/\{/g) || []).length;
@@ -1117,19 +1168,19 @@ public class Main {
                 const openBrackets = (processedLine.match(/\[/g) || []).length;
                 const closeBrackets = (processedLine.match(/\]/g) || []).length;
 
-                braceBalance += openBraces - closeBraces;
-                parenBalance += openParens - closeParens;
-                bracketBalance += openBrackets - closeBrackets;
+                codeState.braceBalance += openBraces - closeBraces;
+                codeState.parenBalance += openParens - closeParens;
+                codeState.bracketBalance += openBrackets - closeBrackets;
 
                 const skipBraceBalanceWarning =
                     processedLine.match(/\b(class|interface|enum|void)\b/) ||
-                    processedLine.match(/\w+\s*\([^)]*\)\s*\{/) ||          // Method with parameters
-                processedLine.match(/\b(public|private|protected)\b.*\(/) || // Method modifiers
-                processedLine.match(/\b(if|for|while|switch|try|catch)\b.*\{/) || // Control structures
-                processedLine.match(/\}\s*else\s*\{/) ||                // else blocks
-                processedLine === "}" ||                                // Just a closing brace
-                processedLine.endsWith("}") ||                          // Line ends with closing brace
-                (openBraces === 0 && closeBraces === 0);                // No braces at all
+                    processedLine.match(/\w+\s*\([^)]*\)\s*\{/) ||
+                processedLine.match(/\b(public|private|protected)\b.*\(/) ||
+                processedLine.match(/\b(if|for|while|switch|try|catch)\b.*\{/) ||
+                processedLine.match(/\}\s*else\s*\{/) ||
+                processedLine === "}" ||
+                processedLine.endsWith("}") ||
+                (openBraces === 0 && closeBraces === 0);
 
                 if (openBraces !== closeBraces && !skipBraceBalanceWarning) {
                     errors.push({
@@ -1157,10 +1208,11 @@ public class Main {
                         severity: monaco.MarkerSeverity.Warning
                     });
                 }
-                // Check for bracketed array declarations
+
                 const skipBracketBalanceWarning =
                     processedLine.match(/\b(String|int|boolean|double|float|long|char|byte|short)\s*\[\]/) ||
-                    processedLine.match(/\bnew\b.*\[.*\]/);
+                    processedLine.match(/\bnew\b.*\[.*\]/) ||
+                    processedLine.match(/\w+\[\s*\d*\s*\]/);
 
                 if (openBrackets !== closeBrackets && !skipBracketBalanceWarning) {
                     errors.push({
@@ -1176,6 +1228,7 @@ public class Main {
                 let inString = false;
                 let escapeNext = false;
                 let unclosedString = false;
+                let stringStartPos = -1;
 
                 for (let j = 0; j < processedLine.length; j++) {
                     const char = processedLine[j];
@@ -1191,32 +1244,22 @@ public class Main {
                     }
 
                     if (char === '"') {
+                        if (!inString) {
+                            stringStartPos = j;
+                        }
                         inString = !inString;
                     }
                 }
 
                 if (inString) {
                     unclosedString = true;
-                }
-
-                if (unclosedString) {
                     errors.push({
                         startLineNumber: lineNumber,
-                        startColumn: 1,
+                        startColumn: stringStartPos + 1,
                         endLineNumber: lineNumber,
-                        endColumn: line.length + 1,
+                        endColumn: processedLine.length + 1,
                         message: 'Unclosed string literal',
                         severity: monaco.MarkerSeverity.Error
-                    });
-                }
-                if (trimmedLine.startsWith('import ') && hasClassDeclaration) {
-                    errors.push({
-                        startLineNumber: lineNumber,
-                        startColumn: 1,
-                        endLineNumber: lineNumber,
-                        endColumn: line.length + 1,
-                        message: 'Import statements should come before class/interface declarations',
-                        severity: monaco.MarkerSeverity.Warning
                     });
                 }
 
@@ -1255,75 +1298,200 @@ public class Main {
                     'collctor': 'Collector',
                     'syso': 'System.out.println',
                     'System.out.printin': 'System.out.println',
-                    'System.ot.println': 'System.out.println'
+                    'System.ot.println': 'System.out.println',
+                    'lenght': 'length',
+                    'lenth': 'length',
+                    'foreache': 'forEach',
+                    'toSting': 'toString',
+                    'StringBuffre': 'StringBuffer',
+                    'StringBilder': 'StringBuilder',
+                    'equlas': 'equals',
+                    'hashcode': 'hashCode',
+                    'compareTo': 'compareTo',
+                    'compareTto': 'compareTo',
+                    'IntStream': 'IntStream',
+                    'DoubleStrem': 'DoubleStream'
                 };
 
-                Object.keys(commonTypos).forEach(typo => {
-                    const regex = new RegExp('\\b' + typo + '\\b', 'g');
-                    let match;
+                if (!line.trim().startsWith("//") && !codeState.inMultiLineComment) {
+                    Object.keys(commonTypos).forEach(typo => {
+                        const regex = new RegExp('\\b' + typo + '\\b', 'g');
+                        let match;
+                        let processedForTypos = processedLine;
 
-                    while ((match = regex.exec(processedLine)) !== null) {
+                        const stringLiterals = processedLine.match(/"[^"]*"/g) || [];
+                        stringLiterals.forEach(str => {
+                            processedForTypos = processedForTypos.replace(str, ''.padEnd(str.length, ' '));
+                        });
+
+                        while ((match = regex.exec(processedForTypos)) !== null) {
+                            errors.push({
+                                startLineNumber: lineNumber,
+                                startColumn: match.index + 1,
+                                endLineNumber: lineNumber,
+                                endColumn: match.index + typo.length + 1,
+                                message: 'Possible typo: \'' + typo + '\'. Did you mean \'' + commonTypos[typo] + '\'?',
+                                severity: monaco.MarkerSeverity.Warning
+                            });
+                        }
+                    });
+                }
+
+                const javaPatterns = [
+                    {
+                        pattern: /if\s*\([^)]*\)\s*[^{;]/,
+                        message: 'Consider using braces {} around this if block for better readability',
+                        severity: monaco.MarkerSeverity.Hint
+                    },
+                    {
+                        pattern: /for\s*\([^)]*\)\s*[^{;]/,
+                        message: 'Consider using braces {} around this for loop for better readability',
+                        severity: monaco.MarkerSeverity.Hint
+                    },
+                    {
+                        pattern: /catch\s*\([^)]*\)\s*\{[^}]*System\.out\.print/,
+                        message: 'Consider using a logger instead of System.out in catch blocks',
+                        severity: monaco.MarkerSeverity.Hint
+                    },
+                    {
+                        pattern: /while\s*\(true\)/,
+                        message: 'Infinite loop detected. Ensure there is a break condition',
+                        severity: monaco.MarkerSeverity.Warning
+                    },
+                    {
+                        pattern: /==\s*(null|".*")/,
+                        message: 'Use .equals() to compare objects instead of ==',
+                        severity: monaco.MarkerSeverity.Warning
+                    }
+                ];
+
+                javaPatterns.forEach(({ pattern, message, severity }) => {
+                    if (pattern.test(processedLine)) {
                         errors.push({
                             startLineNumber: lineNumber,
-                            startColumn: match.index + 1,
+                            startColumn: 1,
                             endLineNumber: lineNumber,
-                            endColumn: match.index + typo.length + 1,
-                            message: 'Possible typo: \'' + typo + '\'. Did you mean \'' + commonTypos[typo] + '\'?',
-                            severity: monaco.MarkerSeverity.Warning
+                            endColumn: line.length + 1,
+                            message: message,
+                            severity: monaco.MarkerSeverity[severity]
                         });
                     }
                 });
             }
 
-            if (hasClassDeclaration && !hasMainMethod) {
+            if (codeState.hasClassDeclaration) {
+
+                if (!codeState.hasMainMethod && lines.length > 20) {
+                    errors.push({
+                        startLineNumber: codeState.classDeclarationLine + 1,
+                        startColumn: 1,
+                        endLineNumber: codeState.classDeclarationLine + 1,
+                        endColumn: 10,
+                        message: 'No main method found. Add "public static void main(String[] args)" for a runnable program.',
+                        severity: monaco.MarkerSeverity.Hint
+                    });
+                }
+
+            }
+
+            if (codeState.braceBalance !== 0) {
                 errors.push({
-                    startLineNumber: 1,
-                    startColumn: 1,
-                    endLineNumber: 1,
-                    endColumn: 10,
-                    message: 'No main method found. Add "public static void main(String[] args)" for a runnable program.',
+                    startLineNumber: lines.length,
+                    startColumn: lines[lines.length - 1].length + 1,
+                    endLineNumber: lines.length,
+                    endColumn: lines[lines.length - 1].length + 1,
+                    message: codeState.braceBalance > 0 ?
+                        'Missing ' + codeState.braceBalance + ' closing brace(s) \'}\'' :
+                        'Extra ' + Math.abs(codeState.braceBalance) + ' closing brace(s) \'}\'',
+                    severity: monaco.MarkerSeverity.Error
+                });
+            }
+
+            if (codeState.parenBalance !== 0) {
+                errors.push({
+                    startLineNumber: lines.length,
+                    startColumn: lines[lines.length - 1].length + 1,
+                    endLineNumber: lines.length,
+                    endColumn: lines[lines.length - 1].length + 1,
+                    message: codeState.parenBalance > 0 ?
+                        'Missing ' + codeState.parenBalance + ' closing parenthesis \')\'' :
+                        'Extra ' + Math.abs(codeState.parenBalance) + ' closing parenthesis \')\'',
+                    severity: monaco.MarkerSeverity.Error
+                });
+            }
+
+            if (codeState.bracketBalance !== 0) {
+                errors.push({
+                    startLineNumber: lines.length,
+                    startColumn: lines[lines.length - 1].length + 1,
+                    endLineNumber: lines.length,
+                    endColumn: lines[lines.length - 1].length + 1,
+                    message: codeState.bracketBalance > 0 ?
+                        'Missing ' + codeState.bracketBalance + ' closing bracket(s) \']\'' :
+                        'Extra ' + Math.abs(codeState.bracketBalance) + ' closing bracket(s) \']\'',
+                    severity: monaco.MarkerSeverity.Error
+                });
+            }
+
+            const codeJoined = lines.join('\n');
+            const antiPatterns = [
+                {
+                    pattern: /catch\s*\([^)]*\)\s*\{\s*\}/g,
+                    message: 'Empty catch block found. Consider handling or logging the exception',
+                    severity: monaco.MarkerSeverity.Warning
+                },
+                {
+                    pattern: /\/\/\s*TODO|FIXME/g,
+                    message: 'TODO/FIXME comment found. Consider resolving before finalizing code',
                     severity: monaco.MarkerSeverity.Hint
-                });
-            }
+                },
+                {
+                    pattern: /(?:public|private|protected)\s+\w+\s+\w+\s*=\s*null\s*;/g,
+                    message: 'Consider initializing class members with proper values instead of null',
+                    severity: monaco.MarkerSeverity.Hint
+                },
+                {
+                    pattern: /System\.exit\s*\(\s*[0-1]\s*\)/g,
+                    message: 'System.exit() detected. Consider handling termination more gracefully',
+                    severity: monaco.MarkerSeverity.Hint
+                },
+                {
+                    pattern: /new\s+Exception\([^)]*\)/g,
+                    message: 'Creating generic Exception. Consider using a more specific exception type',
+                    severity: monaco.MarkerSeverity.Hint
+                }
+            ];
 
-            if (braceBalance !== 0) {
-                errors.push({
-                    startLineNumber: lines.length,
-                    startColumn: lines[lines.length - 1].length + 1,
-                    endLineNumber: lines.length,
-                    endColumn: lines[lines.length - 1].length + 1,
-                    message: braceBalance > 0 ? 'Missing closing brace(s)' : 'Extra closing brace(s)',
-                    severity: monaco.MarkerSeverity.Error
-                });
-            }
+            antiPatterns.forEach(({ pattern, message, severity }) => {
+                let match;
+                while ((match = pattern.exec(codeJoined)) !== null) {
 
-            if (parenBalance !== 0) {
-                errors.push({
-                    startLineNumber: lines.length,
-                    startColumn: lines[lines.length - 1].length + 1,
-                    endLineNumber: lines.length,
-                    endColumn: lines[lines.length - 1].length + 1,
-                    message: parenBalance > 0 ? 'Missing closing parenthesis' : 'Extra closing parenthesis',
-                    severity: monaco.MarkerSeverity.Error
-                });
-            }
+                    let lineIndex = 0;
+                    let charCount = 0;
+                    while (lineIndex < lines.length && charCount + lines[lineIndex].length + 1 <= match.index) {
+                        charCount += lines[lineIndex].length + 1;
+                        lineIndex++;
+                    }
 
-            if (bracketBalance !== 0) {
-                errors.push({
-                    startLineNumber: lines.length,
-                    startColumn: lines[lines.length - 1].length + 1,
-                    endLineNumber: lines.length,
-                    endColumn: lines[lines.length - 1].length + 1,
-                    message: bracketBalance > 0 ? 'Missing closing bracket(s)' : 'Extra closing bracket(s)',
-                    severity: monaco.MarkerSeverity.Error
-                });
-            }
+                    const column = match.index - charCount + 1;
+
+                    errors.push({
+                        startLineNumber: lineIndex + 1,
+                        startColumn: column,
+                        endLineNumber: lineIndex + 1,
+                        endColumn: column + match[0].length,
+                        message: message,
+                        severity: monaco.MarkerSeverity[severity]
+                    });
+                }
+            });
 
             monaco.editor.setModelMarkers(model, 'java-syntax', errors);
-            return errors.length;
 
+            return errors.length;
         }
 
+        // below code for the intance of the manco
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
@@ -1485,7 +1653,7 @@ public class Main {
         .mtk5, .mtk6 { color: #CE9178 !important; } /* strings */
         .mtk9 { color: #B5CEA8 !important; } /* numbers */
         .mtk10 { color: #4EC9B0 !important; } /* class names */
-    `;
+     `;
             document.head.appendChild(style);
         }
 
@@ -1521,7 +1689,6 @@ public class Main {
                         };
                     }
                 }
-
                 return null;
             }
         });
@@ -1602,7 +1769,9 @@ public class Main {
         setProgress('compilation-progress', 0);
         setProgress('execution-progress', 0);
         setProgress('memory-progress', 0);
+
     }
+
     function compileAndRun() {
         if (isRunning) return;
 
@@ -1740,6 +1909,7 @@ public class Main {
     }
 
     function saveSnippet() {
+
         const sourceCode = editor.getValue();
         const title = prompt('Enter filename to save as:', 'Main.java');
 
@@ -1759,6 +1929,7 @@ public class Main {
         URL.revokeObjectURL(url);
         showToast('Code saved as ' + title, true);
     }
+
 
 </script>
 </body>
