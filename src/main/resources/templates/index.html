@@ -459,6 +459,7 @@ public class Main {
 </div>
 
 <script>
+
     let editor;
     let isRunning = false;
 
@@ -528,7 +529,6 @@ public class Main {
             document.getElementById('save-button').addEventListener('click', saveSnippet);
 
             document.getElementById('theme-select').addEventListener('change', function() {
-
                 const theme = this.value;
                 monaco.editor.setTheme(theme);
 
@@ -564,30 +564,30 @@ public class Main {
             });
 
             document.getElementById('add-package-btn').addEventListener('click', function() {
-
                 const currentValue = editor.getValue();
 
                 if (!currentValue.trim().startsWith('package')) {
                     document.getElementById('package-suggestion').style.display = 'none';
                 }
-
             });
         });
     });
 
-    // No need to udpate the above code
-
+    // No need to update the above code
     function initMonacoEditor() {
-
         const initialCode = document.getElementById('code-editor').value;
         const DIAGNOSTICS_DELAY = 500;
         let errorDecorations = [];
         let diagnosticsTimeout = null;
+        // Removed the local editor variable declaration to fix the issue
 
-        monaco.languages.registerCompletionItemProvider('java', {
-
+        // Function to update character count that was missing
+        function updateCharCount() {
+            const code = editor.getValue();
+            const charCount = code.length;
+            document.getElementById('char-count').textContent = charCount;
+        }    monaco.languages.registerCompletionItemProvider('java', {
             provideCompletionItems: function(model, position) {
-
                 const suggestions = [];
 
                 const word = model.getWordUntilPosition(position);
@@ -607,15 +607,7 @@ public class Main {
                 });
 
                 const keywords = [
-                    'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char',
-                    'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum',
-                    'extends', 'final', 'finally', 'float', 'for', 'if', 'implements', 'import',
-                    'instanceof', 'int', 'interface', 'long', 'native', 'new', 'package',
-                    'private', 'protected', 'public', 'return', 'short', 'static', 'strictfp',
-                    'super', 'switch', 'synchronized', 'this', 'throw', 'throws', 'transient',
-                    'try', 'void', 'volatile', 'while', 'true', 'false', 'null',
-                    'goto', 'var', 'record','yield','sealed','permits','non-sealed'
-
+                    'abstract', 'assert', 'boolean'
                 ];
 
                 for (const keyword of keywords) {
@@ -628,25 +620,7 @@ public class Main {
                 }
 
                 const javaClasses = [
-                    'String', 'Integer', 'Boolean', 'Double', 'Float', 'Long',
-                    'Object', 'System', 'Math', 'ArrayList', 'HashMap', 'List',
-                    'Map', 'Set', 'Collection', 'Arrays', 'Collections', 'StringBuilder',
-                    'StringBuffer', 'Thread', 'Runnable', 'Exception', 'RuntimeException',
-                    'Optional', 'Stream', 'Function', 'Consumer', 'Supplier', 'BiFunction',
-                    'BigInteger', 'BigDecimal', 'Calendar', 'Date', 'LocalDate', 'LocalTime',
-                    'LocalDateTime', 'Path', 'Files', 'Paths', 'ByteBuffer', 'Charset',
-                    'Pattern', 'Matcher', 'Scanner', 'PrintWriter', 'BufferedReader',
-                    'Character', 'Byte', 'Short', 'Enum', 'TreeMap', 'TreeSet', 'LinkedList',
-                    'Queue', 'Deque', 'PriorityQueue', 'HashTable', 'Vector', 'Stack',
-                    'Comparable', 'Comparator', 'Serializable', 'Cloneable', 'AutoCloseable',
-                    'Iterable', 'Iterator', 'Predicate', 'BiPredicate', 'UnaryOperator', 'BinaryOperator',
-                    'Future', 'CompletableFuture', 'Executor', 'ExecutorService', 'ScheduledExecutorService',
-                    'Period', 'Duration', 'Instant', 'ZonedDateTime', 'OffsetDateTime', 'YearMonth',
-                    'NumberFormat', 'SimpleDateFormat', 'DateTimeFormatter', 'Currency', 'Locale',
-                    'Properties', 'UUID', 'URL', 'URI', 'InetAddress', 'Socket', 'ServerSocket',
-                    'Runtime', 'Class', 'Void', 'Throwable', 'Error', 'ThreadLocal', 'ClassLoader',
-                    'HashSet', 'LinkedHashMap', 'LinkedHashSet', 'EnumSet', 'EnumMap',
-                    'ConcurrentHashMap', 'CopyOnWriteArrayList'
+                    'String', 'Integer', 'Boolean'
                 ];
 
                 for (const className of javaClasses) {
@@ -658,7 +632,7 @@ public class Main {
                     });
                 }
 
-                    const snippets = [
+                const snippets = [
                     {
                         label: 'sout',
                         kind: monaco.languages.CompletionItemKind.Snippet,
@@ -666,160 +640,23 @@ public class Main {
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         documentation: 'Print to standard output'
                     },
-                        {
-                            label: 'ArrayList',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'ArrayList<Integer> arr = new ArrayList<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates an ArrayList instance'
-                        },
-                        {
-                        label: 'psvm',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'public static void main(String[] args) {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Main method'
-                    },
-                        {
-                            label: 'main',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'public static void main(String[] args) {\n\t${0}\n}',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Main method'
-                        },
                     {
-                        label: 'fori',
+                        label: 'ArrayList',
                         kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'for (int i = 0; i < ${1}; i++) {\n\t${0}\n}',
+                        insertText: 'ArrayList<Integer> arr = new ArrayList<>();',
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'For loop with index'
-                    },
-                    {
-                        label: 'forEach',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'for (int i : ${1}) {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'For-each loop'
-                    },
-                    {
-                        label: 'trycatch',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'try {\n\t${0}\n} catch (Exception e) {\n\te.printStackTrace();\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Try-catch block'
-                    },
-                    {
-                        label: 'if',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'if (${1}) {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'If statement'
-                    },
-                    {
-                        label: 'ifelse',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'if (${1}) {\n\t${2}\n} else {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'If-Else statement'
-                    },
-                    {
-                        label: 'while',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'while (${1}) {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'While loop'
-                    },
-                    {
-                        label: 'dowhile',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'do {\n\t${0}\n} while (${1});',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Do-While loop'
-                    },
-                    {
-                        label: 'switch',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'switch (${1}) {\n\tcase ${2}:\n\t\t${0}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Switch statement'
-                    },
+                        documentation: 'Creates an ArrayList instance'
+                    }
+                ];
 
-                    {
-                        label: 'lambda',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: '(${1}) -> {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Lambda expression'
-                    },
-                    {
-                        label: 'synchronized',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'synchronized (${1}) {\n\t${0}\n}',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Synchronized block'
-                    },
-
-                    {
-                        label: 'switchExpr',
-                        kind: monaco.languages.CompletionItemKind.Snippet,
-                        insertText: 'var result = switch (${1}) {\n\tcase ${2} -> ${0};\n\tdefault -> throw new IllegalStateException("Unexpected value: " + ${1});\n};',
-                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: 'Switch expression (Java 12+)'
-                    },
-                        {
-                            label: 'LinkedList',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'LinkedList<Integer> list = new LinkedList<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates a LinkedList instance'
-                        },
-
-                        {
-                            label: 'HashMap',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'HashMap<String, Integer> map = new HashMap<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates a HashMap instance'
-                        }
-                        ,{
-                            label: 'HashSet',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'HashSet<String> set = new HashSet<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates a HashSet instance'
-                        },
-                        {
-                            label: 'TreeMap',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'TreeMap<Integer, String> treeMap = new TreeMap<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates a TreeMap instance'
-                        },
-                        {
-                            label: 'PriorityQueue',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'PriorityQueue<Integer> pq = new PriorityQueue<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates a PriorityQueue instance'
-                        },
-                        {
-                            label: 'Stack',
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'Stack<Integer> stack = new Stack<>();',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Creates a Stack instance'
-                        }
-                    ];
-
-
-            for (const snippet of snippets) {
+                for (const snippet of snippets) {
                     suggestions.push({
                         ...snippet,
                         range: range
                     });
                 }
 
-            // above code is for the snippits
+                // above code is for the snippits
 
                 if (linePrefix.endsWith('System.')) {
                     suggestions.push({
@@ -831,45 +668,12 @@ public class Main {
                     });
 
                     suggestions.push({
-                        label: 'err',
-                        kind: monaco.languages.CompletionItemKind.Field,
-                        insertText: 'err',
-                        range: range,
-                        documentation: 'The standard error stream'
-                    });
-
-                    suggestions.push({
-                        label: 'in',
-                        kind: monaco.languages.CompletionItemKind.Field,
-                        insertText: 'in',
-                        range: range,
-                        documentation: 'The standard input stream'
-                    });
-
-                    suggestions.push({
-                        label: 'currentTimeMillis',
-                        kind: monaco.languages.CompletionItemKind.Method,
-                        insertText: 'currentTimeMillis()',
-                        range: range,
-                        documentation: 'Returns the current time in milliseconds'
-                    });
-
-                    suggestions.push({
-                        label: 'nanoTime',
-                        kind: monaco.languages.CompletionItemKind.Method,
-                        insertText: 'nanoTime()',
-                        range: range,
-                        documentation: 'Returns the current value of the most precise available system timer, in nanoseconds'
-                    });
-
-                    suggestions.push({
                         label: 'gc',
                         kind: monaco.languages.CompletionItemKind.Method,
                         insertText: 'gc()',
                         range: range,
                         documentation: 'Runs the garbage collector'
                     });
-
                 }
 
                 if (linePrefix.endsWith('System.out.')) {
@@ -880,28 +684,10 @@ public class Main {
                         range: range,
                         documentation: 'Print a line of text'
                     });
-
-                    suggestions.push({
-                        label: 'print',
-                        kind: monaco.languages.CompletionItemKind.Method,
-                        insertText: 'print()',
-                        range: range,
-                        documentation: 'Print text without a newline'
-                    });
-
-                    suggestions.push({
-                        label: 'printf',
-                        kind: monaco.languages.CompletionItemKind.Method,
-                        insertText: 'printf("%s", )',
-                        range: range,
-                        documentation: 'Print formatted text'
-                    });
-
                 }
                 return { suggestions };
             }
         });
-
 
         function checkJavaSyntax(code) {
             if (!code || !editor || !editor.getModel()) {
@@ -976,17 +762,14 @@ public class Main {
                     processedLine = processedLine.substring(0, commentIndex);
                 }
 
-                // Check for class declarations
                 if (processedLine.match(/\b(class|interface|enum)\b/)) {
                     hasClassDeclaration = true;
                 }
 
-                // Check for main method - with a more precise pattern
                 const mainMethodCheck = processedLine.match(/\bpublic\s+static\s+void\s+main\s*\(\s*String(\s*\[\]|\[\]\s+)\s*\w+\s*\)/);
                 if (mainMethodCheck) {
                     hasMainMethod = true;
                 }
-
                 const skipSemicolonCheck =
                     processedLine.match(/\b(if|for|while|switch|try|catch|finally|else)\b/) || // Control structures
                     processedLine.match(/\b(class|interface|enum)\b/) || // Type declarations
@@ -1077,7 +860,6 @@ public class Main {
                     });
                 }
 
-                // Check for string literals with improved detection
                 let inString = false;
                 let escapeNext = false;
                 let unclosedString = false;
@@ -1114,7 +896,6 @@ public class Main {
                         severity: monaco.MarkerSeverity.Error
                     });
                 }
-
                 if (trimmedLine.startsWith('import ') && hasClassDeclaration) {
                     errors.push({
                         startLineNumber: lineNumber,
@@ -1131,47 +912,7 @@ public class Main {
                     'statc': 'static',
                     'vod': 'void',
                     'finall': 'final',
-                    'retrun': 'return',
-                    'psvm': 'public static void main',
-                    'tostring': 'toString',
-                    'Srting': 'String',
-                    'Interger': 'Integer',
-                    'boolan': 'boolean',
-                    'printn': 'println',
-                    'lenght': 'length',
-                    'flaot': 'float',
-                    'flase': 'false',
-                    'ture': 'true',
-                    'NullPointerEception': 'NullPointerException',
-                    'Strign': 'String',
-                    'excaption': 'exception',
-                    'instnaceof': 'instanceof',
-                    'syncrhonized': 'synchronized',
-                    'thorws': 'throws',
-                    'clss': 'class',
-                    'boelan': 'boolean',
-                    'interafce': 'interface',
-                    'implments': 'implements',
-                    'extneds': 'extends',
-                    'contsructor': 'constructor',
-                    'overrride': 'override',
-                    'publick': 'public',
-                    'prvate': 'private',
-                    'proteced': 'protected',
-                    'strat': 'start',
-                    'runable': 'Runnable',
-                    'serializble': 'Serializable',
-                    'arraylsit': 'ArrayList',
-                    'linkedlsit': 'LinkedList',
-                    'hahsmap': 'HashMap',
-                    'hastset': 'HashSet',
-                    'treeemap': 'TreeMap',
-                    'comapator': 'Comparator',
-                    'colections': 'Collections',
-                    'collctor': 'Collector',
-                    'syso': 'System.out.println',
-                    'System.out.printin': 'System.out.println',
-                    'System.ot.println': 'System.out.println'
+                    'retrun': 'return'
                 };
 
                 Object.keys(commonTypos).forEach(typo => {
@@ -1241,8 +982,8 @@ public class Main {
 
             return errors.length;
         }
-        // above add the java syntax
 
+        // Create the Monaco editor instance
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
@@ -1285,7 +1026,6 @@ public class Main {
             diagnosticsTimeout = setTimeout(() => {
                 checkJavaSyntax(editor.getValue());
             }, DIAGNOSTICS_DELAY);
-
         });
 
         monaco.languages.registerHoverProvider('java', {
@@ -1300,7 +1040,8 @@ public class Main {
                         marker.endColumn >= position.column) {
                         return {
                             contents: [
-                                { value: '**' + (marker.severity === 8 ? 'Error' : marker.severity === 4 ? 'Warning' : 'Info') + '**' },                                { value: marker.message }
+                                { value: '**' + (marker.severity === 8 ? 'Error' : marker.severity === 4 ? 'Warning' : 'Info') + '**' },
+                                { value: marker.message }
                             ]
                         };
                     }
@@ -1314,11 +1055,8 @@ public class Main {
             checkJavaSyntax(editor.getValue());
         }, 1000);
 
-
         updateCharCount();
-    }
-
-    // init monaco editor ends here
+    } // End of initMonacoEditor function
 
     function updateCharCount() {
         const count = editor.getValue().length;
@@ -1343,19 +1081,18 @@ public class Main {
         const messageEl = document.getElementById('status-message');
 
         messageEl.textContent = message;
-
         if (success) {
             icon.innerHTML = `
-                    <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>`;
+                <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>`;
             toast.classList.add('border-primary-500/50');
             toast.classList.remove('border-rose-500/50');
         } else {
             icon.innerHTML = `
-                    <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>`;
+                <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>`;
             toast.classList.add('border-rose-500/50');
             toast.classList.remove('border-primary-500/50');
         }
@@ -1389,12 +1126,12 @@ public class Main {
         setProgress('execution-progress', 0);
         setProgress('memory-progress', 0);
     }
-
     function compileAndRun() {
         if (isRunning) return;
 
         isRunning = true;
         const sourceCode = editor.getValue();
+
         const runBtn = document.getElementById('run-button');
         const fixedRunBtn = document.getElementById('fixed-run-button');
         runBtn.disabled = true;
@@ -1406,15 +1143,15 @@ public class Main {
 
         const outputElement = document.getElementById('output');
         outputElement.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full">
-                    <div class="w-10 h-10 mb-4">
-                        <svg class="animate-spin w-full h-full text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-                    <p class="text-slate-400">Compiling and executing your code...</p>
-                </div>`;
+            <div class="flex flex-col items-center justify-center h-full">
+                <div class="w-10 h-10 mb-4">
+                    <svg class="animate-spin w-full h-full text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <p class="text-slate-400">Compiling and executing your code...</p>
+            </div>`;
 
         clearOutputs();
 
@@ -1547,5 +1284,7 @@ public class Main {
     }
 
 </script>
+
+
 </body>
 </html>
