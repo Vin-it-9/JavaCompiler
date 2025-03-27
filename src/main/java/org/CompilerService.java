@@ -210,6 +210,7 @@ public class CompilerService {
     }
 
     private ExecutionResult executeCode(String className, Path workingDir) {
+
         StringBuilder output = new StringBuilder();
         boolean success = false;
         long memoryUsed = 0;

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Java Compiler</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
+    <link rel="icon" href="https://cdn.brandfetch.io/quarkus.io/fallback/lettermark/theme/dark/h/256/w/256/icon?c=1bfwsmEH20zzEfSNTed" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/darcula.min.css">
@@ -16,20 +16,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
+
         :root {
-            --primary-hue: 160;
-            --primary-color: hsl(var(--primary-hue), 84%, 45%);
-            --primary-hover: hsl(var(--primary-hue), 84%, 40%);
-            --accent-color: hsl(calc(var(--primary-hue) + 20), 84%, 45%);
-            --accent-hover: hsl(calc(var(--primary-hue) + 20), 84%, 40%);
-            --secondary-color: hsl(calc(var(--primary-hue) + 180), 70%, 55%);
-            --surface-1: rgba(30, 41, 59, 0.95);
-            --surface-2: rgba(51, 65, 85, 0.9);
-            --surface-3: rgba(71, 85, 105, 0.8);
-            --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --glow-shadow: 0 0 15px rgba(34, 211, 238, 0.5);
-            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --glass-bg: rgba(17, 25, 40, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glow-1: rgba(16, 185, 129, 0.25);
+            --glow-2: rgba(14, 165, 233, 0.24);
+            --glow-3: rgba(139, 92, 246, 0.25);
         }
 
         * {
@@ -41,36 +36,114 @@
         body {
             font-family: var(--font-sans);
             min-height: 100vh;
-            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            background: radial-gradient(circle at top right, var(--bg-secondary), var(--bg-primary));
             color: #f8fafc;
             overflow-x: hidden;
             display: flex;
             flex-direction: column;
+            position: relative;
+            isolation: isolate;
+        }
+
+        body::before,
+        body::after,
+        .bg-effect {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.5;
+            z-index: -1;
+            animation: floatOrb 20s infinite ease-in-out;
+        }
+
+        body::before {
+            width: 50vw;
+            height: 50vw;
+            background: var(--glow-1);
+            top: -25vw;
+            left: -25vw;
+            animation-delay: -3s;
+        }
+
+        body::after {
+            width: 45vw;
+            height: 45vw;
+            background: var(--glow-2);
+            top: 20%;
+            right: -15vw;
+            animation-delay: -7s;
+        }
+
+        .bg-effect {
+            width: 60vw;
+            height: 60vw;
+            background: var(--glow-3);
+            bottom: -30vw;
+            left: 25%;
+            animation-delay: -5s;
         }
 
         .glass {
-            background: rgba(17, 25, 40, 0.75);
+            background: var(--glass-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: var(--card-shadow);
+            border: 1px solid var(--glass-border);
+            box-shadow:
+                    0 8px 32px 0 rgba(0, 0, 0, 0.3),
+                    0 0 0 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                    circle at top left,
+                    rgba(255, 255, 255, 0.03),
+                    transparent 40%
+            );
+            pointer-events: none;
         }
 
         .glass-light {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s ease;
+            box-shadow:
+                    0 4px 24px -1px rgba(0, 0, 0, 0.2),
+                    0 0 0 1px rgba(255, 255, 255, 0.03);
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .glass-light:hover {
             transform: translateY(-4px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            box-shadow:
+                    0 12px 32px -1px rgba(0, 0, 0, 0.3),
+                    0 0 0 1px rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.05);
         }
+
+        @keyframes floatOrb {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            25% {
+                transform: translate(-5%, 5%) scale(1.2);
+            }
+            50% {
+                transform: translate(5%, -5%) scale(0.8);
+            }
+            75% {
+                transform: translate(5%, 5%) scale(1.2);
+            }
+        }
+
 
         .editor-area {
             display: flex;
@@ -259,6 +332,7 @@
             background: rgba(16, 185, 129, 1);
         }
 
+
     </style>
 
     <script>
@@ -293,7 +367,7 @@
         }
     </script>
 </head>
-<body class="bg-slate-900 ">
+<body  class="bg-slate-900   ">
 
 <div class="fixed-controls">
     <button id="fixed-run-button" class="fixed-run-button px-4 py-2.5 text-white font-medium flex items-center">
@@ -322,7 +396,7 @@
     </div>
 </header>
 
-<main class="flex-1 layout-container pb-16">
+<main class="flex-1 layout-container  pb-16">
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
 
@@ -445,7 +519,7 @@ public class Main {
     </div>
 </main>
 
-<footer class="py-8 border-t border-slate-800/50">
+<footer class="py-3 border-t border-slate-800/50">
     <div class="layout-container">
         <div class="text-center">
             <div class="text-slate-600 text-xs mt-2">Press F9 to compile and run your code</div>
@@ -476,7 +550,7 @@ public class Main {
                 rules: [
 
                     { token: 'comment', foreground: '808080', fontStyle: 'italic' },
-                    { token: 'keyword', foreground: 'cc7832', fontStyle: 'bold' },
+                    { token: 'keyword', foreground: 'cc7832'},
                     { token: 'string', foreground: '6a8759' },
                     { token: 'number', foreground: '6897bb' },
                     { token: 'identifier', foreground: 'a9b7c6' },
@@ -510,7 +584,7 @@ public class Main {
                     { token: 'string', foreground: 'e6db74' },
                     { token: 'string.escape', foreground: 'ae81ff' },
                     { token: 'keyword', foreground: 'f92672' },
-                    { token: 'keyword.control', foreground: 'f92672', fontStyle: 'bold' },
+                    { token: 'keyword.control', foreground: 'f92672' },
                     { token: 'keyword.operator', foreground: 'f92672' },
                     { token: 'keyword.import', foreground: 'f92672', fontStyle: 'bold' },
                     { token: 'keyword.package', foreground: 'f92672', fontStyle: 'bold' },
@@ -1649,7 +1723,7 @@ public class Main {
 
         /* Basic syntax highlighting */
         .mtk1 { color: #D4D4D4 !important; } /* default text */
-        .mtk7, .mtk8 { color: #569CD6 !important; font-weight: bold; } /* keywords */
+        .mtk7, .mtk8 { color: #569CD6 !important;  } /* keywords */
         .mtk5, .mtk6 { color: #CE9178 !important; } /* strings */
         .mtk9 { color: #B5CEA8 !important; } /* numbers */
         .mtk10 { color: #4EC9B0 !important; } /* class names */
