@@ -337,8 +337,8 @@
                 </div>
                 <div class="flex items-center">
                     <select id="theme-select" class="bg-slate-700 text-slate-300 text-xs py-1.5 px-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                        <option value="vs-dark">VS Code Dark</option>
-                        <option value="intellij-dark">IntelliJ IDEA Dark</option>
+                        <option value="vs-dark">VS Code</option>
+                        <option value="intellij-dark">IntelliJ IDEA</option>
                         <option value="monokai">Monokai</option>
                         <option value="vs">Eclipse</option>
                         <option value="hc-black">High Contrast</option>
@@ -466,21 +466,24 @@ public class Main {
     require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.1/min/vs' }});
 
     document.addEventListener('DOMContentLoaded', function() {
+
+
         require(['vs/editor/editor.main'], function() {
 
             monaco.editor.defineTheme('intellij-dark', {
                 base: 'vs-dark',
                 inherit: true,
                 rules: [
-                    { token: 'comment', foreground: '808080' },
+
+                    { token: 'comment', foreground: '808080', fontStyle: 'italic' },
                     { token: 'keyword', foreground: 'cc7832', fontStyle: 'bold' },
                     { token: 'string', foreground: '6a8759' },
                     { token: 'number', foreground: '6897bb' },
-                    { token: 'operator', foreground: 'a9b7c6' },
-                    { token: 'type', foreground: 'ffc66d' },
                     { token: 'identifier', foreground: 'a9b7c6' },
-                    { token: 'annotation', foreground: 'bbb529' },
-                    { token: 'delimiter', foreground: 'a9b7c6' }
+                    { token: 'type.identifier', foreground: 'ffc66d' },
+                    { token: 'delimiter', foreground: 'a9b7c6' },
+                    { token: 'operator', foreground: 'a9b7c6' }
+
                 ],
                 colors: {
                     'editor.background': '#2b2b2b',
@@ -488,26 +491,48 @@ public class Main {
                     'editorLineNumber.foreground': '#606366',
                     'editorCursor.foreground': '#ffffff',
                     'editor.selectionBackground': '#214283',
-                    'editor.inactiveSelectionBackground': '#163a6c',
                     'editor.lineHighlightBackground': '#323232',
-                    'editorSuggestWidget.background': '#2b2b2b',
-                    'editorSuggestWidget.border': '#323232',
-                    'editorSuggestWidget.foreground': '#a9b7c6',
-                    'editorSuggestWidget.selectedBackground': '#193959',
-                    'editorHoverWidget.background': '#2b2b2b',
-                    'editorHoverWidget.border': '#323232'
+                    'editorBracketHighlight.foreground1': '#FFFF00',
+                    'editorBracketHighlight.foreground2': '#00FF00',
+                    'editorBracketHighlight.foreground3': '#FF00FF',
+                    'editorBracketHighlight.foreground4': '#00FFFF',
+                    'editorBracketHighlight.foreground5': '#FF8800',
+                    'editorBracketHighlight.foreground6': '#8888FF',
+                    'editorBracketHighlight.unexpectedBracket.foreground': '#FF0000'
                 }
             });
+
 
             monaco.editor.defineTheme('monokai', {
                 base: 'vs-dark',
                 inherit: true,
                 rules: [
-                    { token: 'comment', foreground: '75715e' },
+                    { token: 'comment', foreground: '75715e', fontStyle: 'italic' },
                     { token: 'string', foreground: 'e6db74' },
+                    { token: 'string.escape', foreground: 'ae81ff' },
                     { token: 'keyword', foreground: 'f92672' },
+                    { token: 'keyword.control', foreground: 'f92672', fontStyle: 'bold' },
+                    { token: 'keyword.operator', foreground: 'f92672' },
+                    { token: 'keyword.import', foreground: 'f92672', fontStyle: 'bold' },
+                    { token: 'keyword.package', foreground: 'f92672', fontStyle: 'bold' },
                     { token: 'number', foreground: 'ae81ff' },
-                    { token: 'type', foreground: '66d9ef', fontStyle: 'italic' }
+                    { token: 'constant.numeric', foreground: 'ae81ff' },
+                    { token: 'type', foreground: '66d9ef', fontStyle: 'italic' },
+                    { token: 'entity.name.type', foreground: '66d9ef', fontStyle: 'italic' },
+                    { token: 'entity.name.class', foreground: 'a6e22e', fontStyle: 'underline' },
+                    { token: 'entity.other.inherited-class', foreground: 'a6e22e', fontStyle: 'italic underline' },
+                    { token: 'entity.name.function', foreground: 'a6e22e' },
+                    { token: 'variable.parameter', foreground: 'fd971f', fontStyle: 'italic' },
+                    { token: 'variable', foreground: 'f8f8f2' },
+                    { token: 'variable.language', foreground: 'fd971f', fontStyle: 'italic' },
+                    { token: 'constant', foreground: 'ae81ff' },
+                    { token: 'constant.language', foreground: 'ae81ff', fontStyle: 'italic' },
+                    { token: 'storage', foreground: 'f92672' },
+                    { token: 'storage.type', foreground: '66d9ef', fontStyle: 'italic' },
+                    { token: 'storage.modifier', foreground: 'f92672' },
+                    { token: 'annotation', foreground: 'a6e22e', fontStyle: 'italic' },
+                    { token: 'punctuation', foreground: 'f8f8f2' },
+                    { token: 'delimiter', foreground: 'f8f8f2' }
                 ],
                 colors: {
                     'editor.background': '#272822',
@@ -515,7 +540,13 @@ public class Main {
                     'editorLineNumber.foreground': '#8f908a',
                     'editorCursor.foreground': '#f8f8f2',
                     'editor.selectionBackground': '#49483e',
-                    'editor.lineHighlightBackground': '#3e3d32'
+                    'editor.lineHighlightBackground': '#3e3d32',
+                    'editorSuggestWidget.background': '#272822',
+                    'editorSuggestWidget.border': '#3e3d32',
+                    'editorSuggestWidget.foreground': '#f8f8f2',
+                    'editorSuggestWidget.selectedBackground': '#49483e',
+                    'editorHoverWidget.background': '#272822',
+                    'editorHoverWidget.border': '#3e3d32'
                 }
             });
 
@@ -530,6 +561,7 @@ public class Main {
 
             document.getElementById('theme-select').addEventListener('change', function() {
                 const theme = this.value;
+
                 monaco.editor.setTheme(theme);
 
                 const editorContainer = document.getElementById('editor-container');
@@ -568,21 +600,25 @@ public class Main {
 
     // No need to update the above code
     function initMonacoEditor() {
+
         const initialCode = document.getElementById('code-editor').value;
-        const DIAGNOSTICS_DELAY = 500;
+        const DIAGNOSTICS_DELAY = 300;
         let errorDecorations = [];
         let diagnosticsTimeout = null;
-        // Removed the local editor variable declaration to fix the issue
 
-        // Function to update character count that was missing
         function updateCharCount() {
             const code = editor.getValue();
             const charCount = code.length;
             document.getElementById('char-count').textContent = charCount;
-        }    monaco.languages.registerCompletionItemProvider('java', {
-            provideCompletionItems: function(model, position) {
-                const suggestions = [];
+        }
 
+        monaco.languages.registerCompletionItemProvider('java', {
+
+            triggerCharacters: ['.'],
+
+            provideCompletionItems: function(model, position) {
+
+                const suggestions = [];
                 const word = model.getWordUntilPosition(position);
 
                 const range = {
@@ -810,40 +846,163 @@ public class Main {
                     });
                 }
 
-                // above code is for the snippits
+                const dotRange = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column,
+                    endColumn: position.column
+                };
 
                 if (linePrefix.endsWith('System.')) {
-                    suggestions.push({
-                        label: 'out',
-                        kind: monaco.languages.CompletionItemKind.Field,
-                        insertText: 'out',
-                        range: range,
-                        documentation: 'The standard output stream'
-                    });
 
-                    suggestions.push({
-                        label: 'gc',
-                        kind: monaco.languages.CompletionItemKind.Method,
-                        insertText: 'gc()',
-                        range: range,
-                        documentation: 'Runs the garbage collector'
-                    });
+                    return {
+                        suggestions: [
+                            {
+                                label: 'out',
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: 'out',
+                                range: dotRange,
+                                documentation: 'The standard output stream',
+                                sortText: '01'
+                            },
+                            {
+                                label: 'err',
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: 'err',
+                                range: dotRange,
+                                documentation: 'The standard error stream',
+                                sortText: '02'
+                            },
+                            {
+                                label: 'currentTimeMillis',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'currentTimeMillis()',
+                                range: dotRange,
+                                documentation: 'Returns current time in milliseconds',
+                                sortText: '04'
+                            }
+                        ]
+                    };
                 }
 
                 if (linePrefix.endsWith('System.out.')) {
-                    suggestions.push({
-                        label: 'println',
-                        kind: monaco.languages.CompletionItemKind.Method,
-                        insertText: 'println()',
-                        range: range,
-                        documentation: 'Print a line of text'
-                    });
+
+                    return {
+                        suggestions: [
+                            {
+                                label: 'println',
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: 'println();',
+                                range: dotRange,
+                                documentation: 'The standard output stream',
+                                sortText: '01'
+                            },
+                            {
+                                label: 'print();',
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: 'print();',
+                                range: dotRange,
+                                documentation: 'The standard error stream',
+                                sortText: '02'
+                            },
+                            {
+                                label: 'currentTimeMillis',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'currentTimeMillis()',
+                                range: dotRange,
+                                documentation: 'Returns current time in milliseconds',
+                                sortText: '04'
+                            }
+                        ]
+                    };
                 }
+
+                // Math methods
+                if (linePrefix.match(/\bMath\./)) {
+                    return {
+                        suggestions: [
+                            {
+                                label: 'random()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'random()',
+                                range: dotRange,
+                                documentation: 'Returns a random number between 0.0 and 1.0'
+                            },
+                            {
+                                label: 'max()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'max("a","b")',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the greater of two values'
+                            },
+                            {
+                                label: 'min()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'min("a","b")',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the smaller of two values'
+                            },
+                            {
+                                label: 'abs()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'abs()',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the absolute value of a number'
+                            },
+                            {
+                                label: 'ceil()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'ceil()',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the smallest (closest to negative infinity) double value that is greater than or equal to the argument and is equal to a mathematical integer'
+                            },
+                            {
+                                label: 'floor()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'floor()',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the largest (closest to positive infinity) double value that is less than or equal to the argument and is equal to a mathematical integer'
+                            },
+                            {
+                                label: 'round()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'round()',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the closest long to the argument, with ties rounding up'
+                            },
+                            {
+                                label: 'sqrt()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'sqrt()',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the correctly rounded positive square root of a double value'
+                            },
+                            {
+                                label: 'pow()',
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: 'pow( , )',
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: dotRange,
+                                documentation: 'Returns the value of the first argument raised to the power of the second argument'
+                            }
+                        ]
+                    };
+                }
+
+
                 return { suggestions };
             }
         });
 
         function checkJavaSyntax(code) {
+
             if (!code || !editor || !editor.getModel()) {
                 return 0;
             }
@@ -1116,7 +1275,6 @@ public class Main {
                 });
             }
 
-            // Check for overall structure issues
             if (hasClassDeclaration && !hasMainMethod) {
                 errors.push({
                     startLineNumber: 1,
@@ -1128,7 +1286,6 @@ public class Main {
                 });
             }
 
-            // Check overall brace, parentheses, and bracket balance
             if (braceBalance !== 0) {
                 errors.push({
                     startLineNumber: lines.length,
@@ -1163,11 +1320,10 @@ public class Main {
             }
 
             monaco.editor.setModelMarkers(model, 'java-syntax', errors);
-
             return errors.length;
+
         }
 
-        // Create the Monaco editor instance
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
@@ -1190,15 +1346,150 @@ public class Main {
             smoothScrolling: true,
             mouseWheelZoom: true,
             bracketPairColorization: {
-                enabled: true
+                enabled: true,
+                independentColorPoolPerBracketType: true
             },
             formatOnType: true,
             glyphMargin: true,
             lightbulb: {
                 enabled: true
             },
-            renderValidationDecorations: 'on'
+            renderValidationDecorations: 'on',
+            folding: true,
+            foldingStrategy: 'indentation',
+            parameterHints: {
+                enabled: true
+            },
+            stickyScroll: {
+                enabled: true
+            },
+            rulers: [80, 120],
+            inlayHints: {
+                enabled: true
+            },
+            quickSuggestions: {
+                other: true,
+                comments: true,
+                strings: true
+            },
+            suggestOnTriggerCharacters: true,
+            acceptSuggestionOnEnter: "on",
+            tabCompletion: "on",
+            renderLineHighlightOnlyWhenFocus: false,
+            occurrencesHighlight: true,
+            semanticHighlighting: true,
+            hover: {
+                enabled: true,
+                delay: 300,
+                sticky: true
+            },
+            links: true,
+            contextmenu: true,
+            find: {
+                addExtraSpaceOnTop: false,
+                autoFindInSelection: "always",
+                seedSearchStringFromSelection: "always"
+            },
+            wordWrap: "on",
+            wordWrapColumn: 120,
+            codeLens: true,
+            definitionLinkOpensInPeek: true,
+            multiCursorModifier: "alt",
+            columnSelection: false,
+            accessibilitySupport: "auto",
+            experimental: {
+                useUtf8Matcher: true
+            },
+            diffEditorIgnoreTrimWhitespace: false,
+            dragAndDrop: true,
+            emptySelectionClipboard: true
         });
+
+        function generateAccessors() {
+            const position = editor.getPosition();
+            const model = editor.getModel();
+            const wordInfo = model.getWordAtPosition(position);
+
+            if (wordInfo && wordInfo.word) {
+                const fieldName = wordInfo.word;
+                const capitalizedField = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+                let fieldType = "String";
+
+                if (fieldName.startsWith("is") || fieldName.endsWith("Flag")) {
+                    fieldType = "boolean";
+                } else if (fieldName.endsWith("Count") || fieldName.endsWith("Id")) {
+                    fieldType = "int";
+                }
+
+                const getter = "\n\npublic " + fieldType + " get" + capitalizedField + "() {\n\treturn this." + fieldName + ";\n}";
+                const setter = "\n\npublic void set" + capitalizedField + "(" + fieldType + " " + fieldName + ") {\n\tthis." + fieldName + " = " + fieldName + ";\n}";
+
+                const insertText = getter + setter;
+
+                editor.executeEdits('generate-accessors', [{
+                    range: {
+                        startLineNumber: position.lineNumber,
+                        startColumn: position.column,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column
+                    },
+                    text: insertText
+                }]);
+            }
+        }
+
+        setTimeout(function() {
+            try {
+                editor.addAction({
+                    id: 'format-document',
+                    label: 'Format Document',
+                    keybindings: [
+                        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF
+                    ],
+                    run: function() {
+                        editor.getAction('editor.action.formatDocument').run();
+                        return null;
+                    }
+                });
+                editor.addAction({
+                    id: 'toggle-comment',
+                    label: 'Toggle Comment',
+                    keybindings: [
+                        monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash
+                    ],
+                    run: function() {
+                        editor.getAction('editor.action.commentLine').run();
+                        return null;
+                    }
+                });
+
+            } catch (error) {
+
+            }
+        }, 1000);
+
+        function enforceBracketColors() {
+            const style = document.createElement('style');
+            style.textContent = `
+        /* Bracket pair colorization */
+        .bracket-highlighting-0 { color: #FFFF00 !important; }
+        .bracket-highlighting-1 { color: #00FF00 !important; }
+        .bracket-highlighting-2 { color: #FF00FF !important; }
+        .bracket-highlighting-3 { color: #00FFFF !important; }
+        .bracket-highlighting-4 { color: #FF8800 !important; }
+        .bracket-highlighting-5 { color: #8888FF !important; }
+
+        /* Basic syntax highlighting */
+        .mtk1 { color: #D4D4D4 !important; } /* default text */
+        .mtk7, .mtk8 { color: #569CD6 !important; font-weight: bold; } /* keywords */
+        .mtk5, .mtk6 { color: #CE9178 !important; } /* strings */
+        .mtk9 { color: #B5CEA8 !important; } /* numbers */
+        .mtk10 { color: #4EC9B0 !important; } /* class names */
+    `;
+            document.head.appendChild(style);
+        }
+
+        setTimeout(enforceBracketColors, 500);
 
         document.getElementById('editor-container').className = 'editor-area';
 
@@ -1240,7 +1531,9 @@ public class Main {
         }, 1000);
 
         updateCharCount();
-    } // End of initMonacoEditor function
+    }
+
+    // End of initMonacoEditor function
 
     function updateCharCount() {
         const count = editor.getValue().length;
@@ -1468,7 +1761,5 @@ public class Main {
     }
 
 </script>
-
-
 </body>
 </html>
