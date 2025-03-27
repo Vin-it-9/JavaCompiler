@@ -575,6 +575,8 @@ public class Main {
         });
     });
 
+    // No need to udpate the above code
+
     function initMonacoEditor() {
 
         const initialCode = document.getElementById('code-editor').value;
@@ -616,7 +618,6 @@ public class Main {
 
                 ];
 
-
                 for (const keyword of keywords) {
                     suggestions.push({
                         label: keyword,
@@ -656,7 +657,6 @@ public class Main {
                         range: range
                     });
                 }
-
 
                     const snippets = [
                     {
@@ -900,10 +900,9 @@ public class Main {
                 }
                 return { suggestions };
             }
-            // above code is for suggestions
         });
 
-        // below add the java syntax
+
         function checkJavaSyntax(code) {
             if (!code || !editor || !editor.getModel()) {
                 return 0;
@@ -913,27 +912,23 @@ public class Main {
             const lines = code.split('\n');
             const model = editor.getModel();
 
-            // Clear previous markers
             monaco.editor.setModelMarkers(model, 'java-syntax', []);
 
-            // Track multi-line comments and strings
             let inMultiLineComment = false;
             let inMultiLineString = false;
             let braceBalance = 0;
             let parenBalance = 0;
             let bracketBalance = 0;
 
-            // Track for class/method structure
             let hasPackageDeclaration = false;
             let hasClassDeclaration = false;
             let hasMainMethod = false;
 
-            // First pass - check for package and imports
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (line.startsWith("package ")) {
                     hasPackageDeclaration = true;
-                    if (i > 2) { // Allow some flexibility for initial comments
+                    if (i > 2) {
                         errors.push({
                             startLineNumber: i + 1,
                             startColumn: 1,
@@ -947,26 +942,22 @@ public class Main {
                 }
             }
 
-            // Process line by line
             for (let i = 0; i < lines.length; i++) {
                 const lineNumber = i + 1;
                 const line = lines[i];
                 const trimmedLine = line.trim();
 
-                // Skip empty lines
                 if (trimmedLine.length === 0) continue;
 
-                // Process multi-line comments
                 if (inMultiLineComment) {
                     if (line.includes("*/")) {
                         inMultiLineComment = false;
                         continue;
                     } else {
-                        continue; // Skip checking this line if inside a multi-line comment
+                        continue;
                     }
                 }
 
-                // Check for comment starts
                 if (line.includes("/*")) {
                     inMultiLineComment = true;
                     if (line.includes("*/")) {
@@ -975,12 +966,10 @@ public class Main {
                     continue;
                 }
 
-                // Skip single-line comments
                 if (trimmedLine.startsWith("//")) {
                     continue;
                 }
 
-                // Remove inline comments for processing, but keep track of original line
                 let processedLine = line;
                 const commentIndex = processedLine.indexOf("//");
                 if (commentIndex !== -1) {
@@ -998,7 +987,6 @@ public class Main {
                     hasMainMethod = true;
                 }
 
-                // Check for statements that should end with semicolons
                 const skipSemicolonCheck =
                     processedLine.match(/\b(if|for|while|switch|try|catch|finally|else)\b/) || // Control structures
                     processedLine.match(/\b(class|interface|enum)\b/) || // Type declarations
@@ -1009,7 +997,6 @@ public class Main {
                 processedLine.trim() === "";
 
                 if (!processedLine.endsWith(";") && !skipSemicolonCheck) {
-                    // Only check certain statement patterns for semicolons
                     if (processedLine.match(/^(return|break|continue|throw)\s+.+/) ||
                         processedLine.match(/^(int|boolean|String|double|float|long|char|byte|short)\s+\w+\s*=.+/) ||
                         processedLine.match(/\w+\s*=\s*.+/) ||
@@ -1059,7 +1046,6 @@ public class Main {
                     });
                 }
 
-                // Only check parentheses balance if not a method or control structure declaration
                 const skipParenBalanceWarning =
                     processedLine.match(/\b(if|for|while|switch|catch)\b/) ||
                     processedLine.match(/\b(class|interface|enum|void)\b.*\(/) ||
@@ -1075,7 +1061,6 @@ public class Main {
                         severity: monaco.MarkerSeverity.Warning
                     });
                 }
-
                 // Check for bracketed array declarations
                 const skipBracketBalanceWarning =
                     processedLine.match(/\b(String|int|boolean|double|float|long|char|byte|short)\s*\[\]/) ||
@@ -1256,10 +1241,8 @@ public class Main {
 
             return errors.length;
         }
-
         // above add the java syntax
 
-        // no need to update the below code
         editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: initialCode,
             language: 'java',
@@ -1331,8 +1314,10 @@ public class Main {
             checkJavaSyntax(editor.getValue());
         }, 1000);
 
+
         updateCharCount();
     }
+
     // init monaco editor ends here
 
     function updateCharCount() {
