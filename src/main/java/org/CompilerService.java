@@ -16,12 +16,12 @@ import java.util.regex.*;
 @ApplicationScoped
 public class CompilerService {
 
-    private static final long PROCESS_TIMEOUT_SECONDS = 5;
-    private static final int MAX_MEMORY_MB = 128;
-    private static final int STACK_SIZE_KB = 512;
-    private static final int MAX_SOURCE_SIZE_KB = 500;
-    private static final int IO_BUFFER_SIZE = 16384;
-    private static final long JVM_OVERHEAD_BYTES = 512 * 1024;
+    private static final long PROCESS_TIMEOUT_SECONDS = 10;      
+    private static final int MAX_MEMORY_MB = 256;
+    private static final int STACK_SIZE_KB = 1024;
+    private static final int MAX_SOURCE_SIZE_KB = 1000;
+    private static final int IO_BUFFER_SIZE = 65536;
+    private static final long JVM_OVERHEAD_BYTES = 1024 * 1024;
 
     private static final Pattern PUBLIC_CLASS_PATTERN =
             Pattern.compile("(?m)^\\s*public\\s+class\\s+(\\w+)\\s*\\{");
@@ -210,7 +210,6 @@ public class CompilerService {
     }
 
     private ExecutionResult executeCode(String className, Path workingDir) {
-
         StringBuilder output = new StringBuilder();
         boolean success = false;
         long memoryUsed = 0;
@@ -304,19 +303,54 @@ public class CompilerService {
         String helperCode =
                 "public class MemoryHelper {\n" +
                         "    public static void main(String[] args) throws Exception {\n" +
-                        "        System.gc();\n" +
-                        "        long before = getUsedMemory();\n" +
+                        "        // Force several GCs to get a clean baseline\n" +
+                        "        for (int i = 0; i < 3; i++) {\n" +
+                        "            System.gc();\n" +
+                        "            Thread.sleep(50);\n" +
+                        "        }\n" +
+                        "        \n" +
+                        "        long baseline = getUsedMemory();\n" +
+                        "        long peakUsage = 0;\n" +
+                        "        \n" +
+                        "        // Create a memory monitoring thread\n" +
+                        "        Thread memoryMonitor = new Thread(() -> {\n" +
+                        "            try {\n" +
+                        "                long currentPeak = 0;\n" +
+                        "                while (!Thread.currentThread().isInterrupted()) {\n" +
+                        "                    long current = getUsedMemory() - baseline;\n" +
+                        "                    if (current > currentPeak) {\n" +
+                        "                        currentPeak = current;\n" +
+                        "                        java.nio.file.Files.writeString(java.nio.file.Paths.get(\"memory.txt\"), \n" +
+                        "                            String.valueOf(currentPeak));\n" +
+                        "                    }\n" +
+                        "                    Thread.sleep(10); // Sample every 10ms\n" +
+                        "                }\n" +
+                        "            } catch (Exception e) {\n" +
+                        "                // Thread interrupted or other error\n" +
+                        "            }\n" +
+                        "        });\n" +
+                        "        \n" +
+                        "        memoryMonitor.setDaemon(true);\n" +
+                        "        memoryMonitor.start();\n" +
+                        "        \n" +
                         "        try {\n" +
                         "            " + targetClass + ".main(args);\n" +
                         "        } catch (Throwable t) {\n" +
                         "            System.out.println(\"Exception: \" + t.getClass().getName() + \": \" + t.getMessage());\n" +
                         "            t.printStackTrace();\n" +
                         "        } finally {\n" +
-                        "            System.gc();\n" +
-                        "            long after = getUsedMemory();\n" +
-                        "            long used = Math.max(0, after - before);\n" +
-                        "            java.nio.file.Files.writeString(java.nio.file.Paths.get(\"memory.txt\"), \n" +
-                        "                String.valueOf(used));\n" +
+                        "            // Stop the monitoring thread\n" +
+                        "            memoryMonitor.interrupt();\n" +
+                        "            Thread.sleep(100); // Give time for final readings\n" +
+                        "            \n" +
+                        "            // If no memory readings were taken, use a calculation\n" +
+                        "            if (!java.nio.file.Files.exists(java.nio.file.Paths.get(\"memory.txt\"))) {\n" +
+                        "                System.gc();\n" +
+                        "                long after = getUsedMemory();\n" +
+                        "                long used = Math.max(10000, after - baseline);\n" +
+                        "                java.nio.file.Files.writeString(java.nio.file.Paths.get(\"memory.txt\"), \n" +
+                        "                    String.valueOf(used));\n" +
+                        "            }\n" +
                         "        }\n" +
                         "    }\n\n" +
                         "    private static long getUsedMemory() {\n" +
@@ -341,6 +375,7 @@ public class CompilerService {
 
         return helperPath;
     }
+
 
     private String extractPublicClassName(String sourceCode) {
         Matcher matcher = PUBLIC_CLASS_PATTERN.matcher(sourceCode);

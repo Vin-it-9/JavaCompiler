@@ -1413,16 +1413,6 @@ public class Main {
 
                 const javaPatterns = [
                     {
-                        pattern: /if\s*\([^)]*\)\s*[^{;]/,
-                        message: 'Consider using braces {} around this if block for better readability',
-                        severity: monaco.MarkerSeverity.Hint
-                    },
-                    {
-                        pattern: /for\s*\([^)]*\)\s*[^{;]/,
-                        message: 'Consider using braces {} around this for loop for better readability',
-                        severity: monaco.MarkerSeverity.Hint
-                    },
-                    {
                         pattern: /catch\s*\([^)]*\)\s*\{[^}]*System\.out\.print/,
                         message: 'Consider using a logger instead of System.out in catch blocks',
                         severity: monaco.MarkerSeverity.Hint
@@ -1913,6 +1903,7 @@ public class Main {
                 setProgress('compilation-progress', compPercentage);
 
                 if (data.compilationSuccess) {
+
                     animateValue('execution-time', 0, data.executionTimeMs, 800);
                     animateValue('memory-usage', 0, Math.round(data.peakMemoryBytes / 1024), 800);
 
