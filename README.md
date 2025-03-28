@@ -1,62 +1,95 @@
-# javacompiler
+# Java Online Compiler
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+A high-performance, web-based Java compiler and interpreter built with the Quarkus framework.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Features
 
-## Running the application in dev mode
+- **Fast Compilation**: Optimized Java compilation with class caching for improved performance
+- **Secure Execution**: Sandboxed environment for safe code execution
+- **Memory Monitoring**: Track memory usage of executed Java programs
+- **Code Analysis**: Detect public classes and main methods automatically
+- **Execution Statistics**: Monitor compilation time, execution time, and memory usage
+- **Responsive UI**: Web interface for easy code input and result viewing
+- **Resource Management**: Configurable memory limits and timeouts
 
-You can run your application in dev mode that enables live coding using:
+## Getting Started
 
-```shell script
-./mvnw quarkus:dev
+### Prerequisites
+
+- JDK 17 or later
+- Maven 3.8+
+- Docker (optional, for containerized deployment)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Vin-it-9/JavaCompiler.git
+   cd JavaCompiler
+   ```
+
+2. Build the project:
+   ```bash
+   ./mvnw package
+   ```
+
+3. Run the application:
+   ```bash
+   java -jar target/quarkus-app/quarkus-run.jar
+   ```
+
+4. Alternatively, for development mode with hot reload:
+   ```bash
+   ./mvnw quarkus:dev
+   ```
+
+### Docker Deployment
+
+```bash
+docker build -f src/main/docker/Dockerfile.jvm -t java-compiler .
+docker run -i --rm -p 8080:8080 java-compiler
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+## Usage
 
-## Packaging and running the application
+1. Access the web interface at `http://localhost:8080`
+2. Enter Java code in the editor
+3. Click "Compile & Run"
+4. View compilation results, execution output, and performance metrics
 
-The application can be packaged using:
+### API Usage
 
-```shell script
-./mvnw package
+```bash
+curl -X POST "http://localhost:8080/api/compile" \
+  -H "Content-Type: application/json" \
+  -d '{"sourceCode":"public class Hello { public static void main(String[] args) { System.out.println(\"Hello World\"); }}"}'
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+## Configuration
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+The compiler's behavior can be configured by modifying the following parameters in `application.properties` or through environment variables:
 
-If you want to build an _über-jar_, execute the following command:
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `compiler.max-memory-mb` | Maximum memory allocated to JVM | 2048 |
+| `compiler.stack-size-kb` | Stack size for executing programs | 4096 |
+| `compiler.process-timeout-seconds` | Maximum execution time | 15 |
+| `compiler.io-buffer-size` | Buffer size for I/O operations | 262144 |
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
+## Technical Details
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+- **Backend**: Quarkus framework with CDI and RESTEasy
+- **Frontend**: HTML, CSS, JavaScript (possibly with a framework)
+- **Execution**: Controlled Java process execution with resource limits
+- **Memory Management**: JVM memory monitoring through specialized helper class
+- **Caching**: Compiled classes are cached for performance
+- **Error Handling**: Detailed compilation and runtime error reporting
 
-## Creating a native executable
+## Security
 
-You can create a native executable using:
+The compiler implements several security measures:
+- Sandboxed execution environment
+- Resource limits (memory, execution time)
+- Input validation and sanitization
+- Protection against malicious code
 
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/javacompiler-1.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
