@@ -17,11 +17,11 @@ import java.util.regex.*;
 public class CompilerService {
 
     private static final long PROCESS_TIMEOUT_SECONDS = 30;
-    private static final int MAX_MEMORY_MB = 1024;
-    private static final int STACK_SIZE_KB = 8192;
+    private static final int MAX_MEMORY_MB = 2048;
+    private static final int STACK_SIZE_KB = 4192;
     private static final int MAX_SOURCE_SIZE_KB = 1000;
-    private static final int IO_BUFFER_SIZE = 65536;
-    private static final long JVM_OVERHEAD_BYTES = 1024 * 1024;
+    private static final int IO_BUFFER_SIZE = 262144;
+    private static final long JVM_OVERHEAD_BYTES = 128 * 1024 * 1024;
 
     private static final Pattern PUBLIC_CLASS_PATTERN =
             Pattern.compile("(?m)^\\s*public\\s+class\\s+(\\w+)\\s*\\{");
