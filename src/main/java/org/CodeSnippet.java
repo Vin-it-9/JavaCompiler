@@ -28,5 +28,4 @@ public class CodeSnippet {
         this.sourceCode = sourceCode;
     }
 
-
 }
