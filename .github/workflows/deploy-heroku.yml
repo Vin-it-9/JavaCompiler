@@ -1,0 +1,207 @@
+name: Deploy Native Image to Heroku
+
+on:
+  push:
+    branches: 
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '21'
+  GRAALVM_DISTRIBUTION: 'graalvm-community'
+
+jobs:
+  build-and-deploy:
+    name: Build Native & Deploy to Heroku
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevent hanging builds
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better caching
+
+      - name: Set up GraalVM Java ${{ env.JAVA_VERSION }}
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.GRAALVM_DISTRIBUTION }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: 'true'
+          cache: 'maven'
+
+      - name: Verify GraalVM installation
+        run: |
+          echo "=========================================="
+          echo "GraalVM Environment"
+          echo "=========================================="
+          echo "GRAALVM_HOME: $GRAALVM_HOME"
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo ""
+          java -version
+          echo ""
+          native-image --version
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build Quarkus Native Executable
+        run: |
+          echo "=========================================="
+          echo "Building Native Executable with GraalVM"
+          echo "=========================================="
+          echo "App: ${{ secrets.HEROKU_APP_NAME }}"
+          echo "Java Version: ${{ env.JAVA_VERSION }}"
+          echo ""
+          
+          # Build native executable in container
+          # This ensures compatibility with Heroku's Linux environment
+          ./mvnw clean package -Pnative \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 \
+            -Dquarkus.native.additional-build-args=--verbose \
+            -DskipTests
+          
+          echo ""
+          echo "Native executable built successfully!"
+          
+          # Verify the native executable was created
+          if [ -f target/*-runner ]; then
+            ls -lh target/*-runner
+            echo "Native executable size: $(du -h target/*-runner | cut -f1)"
+          else
+            echo "ERROR: Native executable not found!"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Heroku Container Registry
+        run: |
+          echo "=========================================="
+          echo "Logging into Heroku Container Registry"
+          echo "=========================================="
+          echo "${{ secrets.HEROKU_API_KEY }}" | docker login \
+            --username=_ \
+            --password-stdin \
+            registry.heroku.com
+          echo "Login successful!"
+
+      - name: Build and Push Docker Image
+        env:
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          echo "=========================================="
+          echo "Building Docker Image"
+          echo "=========================================="
+          echo "App: $HEROKU_APP_NAME"
+          echo "Registry: registry.heroku.com/$HEROKU_APP_NAME/web"
+          echo ""
+          
+          # Build Docker image using the Heroku-optimized Dockerfile
+          docker build \
+            -f src/main/docker/Dockerfile.native \
+            -t registry.heroku.com/$HEROKU_APP_NAME/web \
+            --platform linux/amd64 \
+            .
+          
+          echo ""
+          echo "Image Details:"
+          docker images registry.heroku.com/$HEROKU_APP_NAME/web
+          
+          echo ""
+          echo "Pushing to Heroku Container Registry..."
+          docker push registry.heroku.com/$HEROKU_APP_NAME/web
+          
+          echo ""
+          echo "Docker image pushed successfully!"
+
+      - name: Install Heroku CLI
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+          heroku --version
+
+      - name: Release container on Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          echo "=========================================="
+          echo "Releasing Container to Heroku"
+          echo "=========================================="
+          heroku container:release web -a $HEROKU_APP_NAME
+          echo "Release complete!"
+
+      - name: Deployment Summary
+        env:
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║          🎉 DEPLOYMENT SUCCESSFUL! 🎉                 ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "📱 Application:  $HEROKU_APP_NAME"
+          echo "🌐 URL:          https://$HEROKU_APP_NAME.herokuapp.com"
+          echo "💾 Commit:       ${{ github.sha }}"
+          echo "🌿 Branch:       ${{ github.ref_name }}"
+          echo "👤 Author:       ${{ github.actor }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 View Logs:"
+          echo "   heroku logs --tail -a $HEROKU_APP_NAME"
+          echo ""
+          echo "🔍 Test Endpoints:"
+          echo "   Health:     https://$HEROKU_APP_NAME.herokuapp.com/health"
+          echo "   Compiler:   https://$HEROKU_APP_NAME.herokuapp.com/api/compiler"
+          echo ""
+          echo "🧪 Quick Test:"
+          echo "   curl https://$HEROKU_APP_NAME.herokuapp.com/health"
+          echo ""
+
+      - name: Health Check
+        continue-on-error: true  # Don't fail the workflow if app is still starting
+        env:
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          echo "=========================================="
+          echo "Running Health Check"
+          echo "=========================================="
+          echo "Waiting 45 seconds for application to start..."
+          sleep 45
+          
+          echo ""
+          echo "Testing health endpoint..."
+          if curl -f -s https://$HEROKU_APP_NAME.herokuapp.com/health; then
+            echo ""
+            echo "Health check passed!"
+          else
+            echo ""
+            echo "Health check failed (app may still be starting)"
+            echo "Check logs: heroku logs --tail -a $HEROKU_APP_NAME"
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Deployment failed!"
+          echo ""
+          echo "Common issues:"
+          echo "  1. Check GitHub secrets are set correctly"
+          echo "  2. Verify Heroku app exists: heroku apps:info -a ${{ secrets.HEROKU_APP_NAME }}"
+          echo "  3. Check Dockerfile.native is properly configured"
+          echo "  4. Review build logs above for errors"
+          echo ""
+          echo "Debugging commands:"
+          echo "  heroku logs --tail -a ${{ secrets.HEROKU_APP_NAME }}"
+          echo "  heroku releases -a ${{ secrets.HEROKU_APP_NAME }}"

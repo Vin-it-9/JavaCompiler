@@ -1,29 +1,59 @@
 ####
-# This Dockerfile is used in order to build a container that runs the Quarkus application in native (no JVM) mode.
+# Dockerfile for Heroku Native Deployment
+# ========================================
 #
-# Before building the container image run:
+# This Dockerfile is optimized for deploying Quarkus native applications to Heroku.
 #
-# ./mvnw package -Dnative
+# Key Features:
+# - Uses UBI 8 minimal base image for smaller footprint
+# - Configures dynamic PORT binding for Heroku
+# - Sets up proper user permissions (1001)
+# - Optimized for fast startup and low memory usage
 #
-# Then, build the image with:
+# Build process:
+# 1. Build native executable: ./mvnw package -Pnative -Dquarkus.native.container-build=true
+# 2. Build Docker image: docker build -f src/main/docker/Dockerfile.native -t app .
+# 3. Push to Heroku: docker tag app registry.heroku.com/APP_NAME/web && docker push
 #
-# docker build -f src/main/docker/Dockerfile.native -t quarkus/javacompiler .
-#
-# Then run the container using:
-#
-# docker run -i --rm -p 8080:8080 quarkus/javacompiler
-#
-# The ` registry.access.redhat.com/ubi9/ubi-minimal:9.5` base image is based on UBI 9.
-# To use UBI 8, switch to `quay.io/ubi8/ubi-minimal:8.10`.
-###
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
+# Heroku-specific:
+# - PORT environment variable is set dynamically by Heroku
+# - Must bind to 0.0.0.0 (not localhost)
+# - Process type must be "web"
+####
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
+
+# Set working directory
 WORKDIR /work/
-RUN chown 1001 /work \
-    && chmod "g+rwX" /work \
-    && chown 1001:root /work
+
+# Create non-root user and set permissions
+# Heroku requires user 1001 for security
+RUN chown 1001:root /work \
+    && chmod "g+rwX" /work
+
+# Copy the native executable with proper permissions
+# The executable is built by: mvnw package -Pnative -Dquarkus.native.container-build=true
 COPY --chown=1001:root --chmod=0755 target/*-runner /work/application
 
-EXPOSE 8080
+# Heroku dynamically assigns the PORT environment variable
+# Default to 8080 for local testing
+ENV PORT=8080
+
+# Switch to non-root user for security
 USER 1001
 
-ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0"]
+# Expose the port (informational only, Heroku uses PORT env var)
+EXPOSE ${PORT}
+
+# Health check (optional but recommended)
+# Uncomment if you have a health endpoint at /q/health
+# HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+#   CMD curl -f http://localhost:${PORT}/q/health/live || exit 1
+
+# Start the application
+# Key points:
+# - Bind to 0.0.0.0 (required for Heroku)
+# - Use PORT environment variable
+# - -Dquarkus.http.port=${PORT} ensures Quarkus uses Heroku's assigned port
+CMD ["sh", "-c", "./application -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=${PORT}"]
+
