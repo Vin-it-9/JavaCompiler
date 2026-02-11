@@ -55,5 +55,5 @@ EXPOSE ${PORT}
 # - Bind to 0.0.0.0 (required for Heroku)
 # - Use PORT environment variable
 # - -Dquarkus.http.port=${PORT} ensures Quarkus uses Heroku's assigned port
-CMD ["sh", "-c", "./application -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=${PORT}"]
+CMD exec ./application -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=$PORT
 
