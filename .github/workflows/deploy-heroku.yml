@@ -62,24 +62,27 @@ jobs:
           echo "App: ${{ secrets.HEROKU_APP_NAME }}"
           echo "Java Version: ${{ env.JAVA_VERSION }}"
           echo ""
+          echo "⚠️  NOTE: Native builds use Java 21 (no preview features)"
+          echo "         Java 25 preview features are NOT compatible with native image"
+          echo ""
           
           # Build native executable in container
           # This ensures compatibility with Heroku's Linux environment
+          # IMPORTANT: Do NOT use --enable-preview with native builds
           ./mvnw clean package -Pnative \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 \
-            -Dquarkus.native.additional-build-args=--verbose \
             -DskipTests
           
           echo ""
-          echo "Native executable built successfully!"
+          echo "✅ Native executable built successfully!"
           
           # Verify the native executable was created
           if [ -f target/*-runner ]; then
             ls -lh target/*-runner
             echo "Native executable size: $(du -h target/*-runner | cut -f1)"
           else
-            echo "ERROR: Native executable not found!"
+            echo "❌ ERROR: Native executable not found!"
             exit 1
           fi
 
