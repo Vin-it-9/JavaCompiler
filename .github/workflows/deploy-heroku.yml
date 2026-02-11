@@ -134,6 +134,17 @@ jobs:
           curl https://cli-assets.heroku.com/install.sh | sh
           heroku --version
 
+      - name: Set Heroku Stack to Container
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          echo "=========================================="
+          echo "Setting Heroku Stack to Container"
+          echo "=========================================="
+          heroku stack:set container -a $HEROKU_APP_NAME
+          echo "Stack changed to container!"
+
       - name: Release container on Heroku
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
