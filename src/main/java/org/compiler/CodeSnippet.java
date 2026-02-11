@@ -1,10 +1,9 @@
-package org;
+package org.compiler;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 
-public class CodeSnippet {
+public final class CodeSnippet {
 
     public Long id;
     public String title;
@@ -19,7 +18,7 @@ public class CodeSnippet {
     public long executionTimeMs;
     public long peakMemoryBytes;
 
-    public Map<String, String> additionalFiles = new HashMap<>();
+    public Map<String, String> additionalFiles = Map.of();
 
     public CodeSnippet() {
     }

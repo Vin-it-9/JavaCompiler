@@ -1,5 +1,44 @@
-*
-!target/*-runner
-!target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*
+# Git
+.git
+.gitignore
+.github
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+target/classes
+target/test-classes
+target/maven-status
+target/generated-sources
+target/generated-test-sources
+
+# IDE
+.vscode
+.idea
+*.iml
+.project
+.classpath
+.settings
+
+# Documentation (exclude but keep essential)
+*.md
+!README.md
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Test files
+src/test
+
+# Keep only what's needed for Docker build
+# Native runner binary will be in target/*-runner

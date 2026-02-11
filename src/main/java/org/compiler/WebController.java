@@ -1,4 +1,4 @@
-package org;
+package org.compiler;
 
 
 import io.quarkus.qute.Template;
@@ -10,7 +10,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
 @Path("/")
-public class WebController {
+public final class WebController {
 
     @Inject
     Template index;
@@ -21,5 +21,11 @@ public class WebController {
         return index.instance();
     }
 
+    @GET
+    @Path("/health")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String health() {
+        return "Java Compiler is running on Java 25 with Quarkus 3.31.2!";
+    }
 
 }
