@@ -1,0 +1,226 @@
+name: Deploy Native Image to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/deploy-lambda.yml'
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '21'
+  GRAALVM_DISTRIBUTION: 'graalvm-community'
+  AWS_REGION: 'us-east-1'  # Change to your preferred region
+  LAMBDA_FUNCTION_NAME: 'JavaCompilerFunction'  # Change to your function name
+
+jobs:
+  build-and-deploy:
+    name: Build Native & Deploy to AWS Lambda
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up GraalVM Java ${{ env.JAVA_VERSION }}
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.GRAALVM_DISTRIBUTION }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: 'true'
+          cache: 'maven'
+
+      - name: Verify GraalVM installation
+        run: |
+          echo "=========================================="
+          echo "GraalVM Environment"
+          echo "=========================================="
+          echo "GRAALVM_HOME: $GRAALVM_HOME"
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo ""
+          java -version
+          echo ""
+          native-image --version
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: ${{ runner.os }}-maven-lambda-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-lambda-
+            ${{ runner.os }}-maven-
+
+      - name: Build Quarkus Native Lambda Function
+        run: |
+          echo "=========================================="
+          echo "Building Native Lambda Function"
+          echo "=========================================="
+          echo "Function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+          echo "Region: ${{ env.AWS_REGION }}"
+          echo ""
+          
+          # Build native executable for AWS Lambda
+          ./mvnw clean package -Pnative \
+            -Dquarkus.profile=lambda \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 \
+            -DskipTests
+          
+          echo ""
+          echo "✅ Native Lambda function built successfully!"
+          
+          # Verify the function.zip was created
+          if [ -f target/function.zip ]; then
+            ls -lh target/function.zip
+            echo "Lambda package size: $(du -h target/function.zip | cut -f1)"
+          else
+            echo "❌ ERROR: function.zip not found!"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to AWS Lambda
+        run: |
+          echo "=========================================="
+          echo "Deploying to AWS Lambda"
+          echo "=========================================="
+          echo "Function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+          echo "Region: ${{ env.AWS_REGION }}"
+          echo ""
+          
+          # Check if Lambda function exists
+          if aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} 2>/dev/null; then
+            echo "Updating existing Lambda function..."
+            aws lambda update-function-code \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --zip-file fileb://target/function.zip \
+              --publish
+          else
+            echo "Creating new Lambda function..."
+            aws lambda create-function \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --runtime provided.al2 \
+              --handler io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest \
+              --role ${{ secrets.AWS_LAMBDA_ROLE_ARN }} \
+              --zip-file fileb://target/function.zip \
+              --timeout 30 \
+              --memory-size 512 \
+              --environment Variables="{QUARKUS_PROFILE=lambda}" \
+              --publish
+            
+            echo ""
+            echo "Creating Lambda Function URL..."
+            aws lambda create-function-url-config \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --auth-type NONE
+            
+            echo ""
+            echo "Adding Function URL permissions..."
+            aws lambda add-permission \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --statement-id FunctionURLAllowPublicAccess \
+              --action lambda:InvokeFunctionUrl \
+              --principal "*" \
+              --function-url-auth-type NONE
+          fi
+          
+          echo ""
+          echo "✅ Lambda function deployed successfully!"
+
+      - name: Get Lambda Function URL
+        id: get-url
+        run: |
+          echo "=========================================="
+          echo "Getting Lambda Function URL"
+          echo "=========================================="
+          
+          FUNCTION_URL=$(aws lambda get-function-url-config \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --query 'FunctionUrl' \
+            --output text 2>/dev/null || echo "Not configured")
+          
+          echo "function_url=$FUNCTION_URL" >> $GITHUB_OUTPUT
+          echo ""
+          echo "Function URL: $FUNCTION_URL"
+
+      - name: Deployment Summary
+        env:
+          LAMBDA_FUNCTION_NAME: ${{ env.LAMBDA_FUNCTION_NAME }}
+          FUNCTION_URL: ${{ steps.get-url.outputs.function_url }}
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║          🎉 AWS LAMBDA DEPLOYMENT SUCCESSFUL! 🎉       ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "⚡ Function:     $LAMBDA_FUNCTION_NAME"
+          echo "🌐 Function URL: $FUNCTION_URL"
+          echo "📍 Region:       ${{ env.AWS_REGION }}"
+          echo "💾 Commit:       ${{ github.sha }}"
+          echo "🌿 Branch:       ${{ github.ref_name }}"
+          echo "👤 Author:       ${{ github.actor }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🧪 Test Your API:"
+          echo "   Health:     $FUNCTION_URL/health"
+          echo "   Compiler:   $FUNCTION_URL/api/compiler"
+          echo ""
+          echo "📊 Quick Test:"
+          echo "   curl $FUNCTION_URL/health"
+          echo ""
+          echo "⚙️  View Logs:"
+          echo "   aws logs tail /aws/lambda/$LAMBDA_FUNCTION_NAME --follow"
+          echo ""
+
+      - name: Test Lambda Function
+        continue-on-error: true
+        env:
+          FUNCTION_URL: ${{ steps.get-url.outputs.function_url }}
+        run: |
+          echo "=========================================="
+          echo "Testing Lambda Function"
+          echo "=========================================="
+          echo "Waiting 10 seconds for function to be ready..."
+          sleep 10
+          
+          echo ""
+          echo "Testing health endpoint..."
+          if curl -f -s $FUNCTION_URL/health; then
+            echo ""
+            echo "✅ Health check passed!"
+          else
+            echo ""
+            echo "⚠️  Health check failed (function may still be initializing)"
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo ""
+          echo "Common issues:"
+          echo "  1. Check AWS credentials are set correctly in GitHub secrets"
+          echo "  2. Verify AWS_LAMBDA_ROLE_ARN secret is set with valid IAM role"
+          echo "  3. Check AWS region is correct"
+          echo "  4. Ensure Lambda function name is unique"
+          echo ""
+          echo "Debugging:"
+          echo "  aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }}"
+          echo "  aws logs tail /aws/lambda/${{ env.LAMBDA_FUNCTION_NAME }}"

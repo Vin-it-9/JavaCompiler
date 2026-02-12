@@ -68,6 +68,11 @@
             <artifactId>ecj</artifactId>
             <version>3.38.0</version>
         </dependency>
+        <!-- AWS Lambda HTTP - for Lambda deployment (optional, doesn't affect Heroku) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-amazon-lambda-http</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
