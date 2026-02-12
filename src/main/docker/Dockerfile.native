@@ -1,20 +1,11 @@
 ####
 # Dockerfile for Heroku Native Deployment with JDK
 # ==================================================
-# Multi-stage build: Extract JDK modules, then create runtime image
+# Multi-stage build: Extract JDK, then create runtime image
 ####
 
-# Stage 1: Get JDK modules
-FROM eclipse-temurin:21-jdk-alpine AS jdk-modules
-
-# Extract only the compiler and base modules needed
-RUN jlink \
-    --add-modules java.base,java.compiler,jdk.compiler,jdk.zipfs \
-    --strip-debug \
-    --no-man-pages \
-    --no-header-files \
-    --compress=2 \
-    --output /jdk-minimal
+# Stage 1: Get full JDK for compiler
+FROM eclipse-temurin:21-jdk-alpine AS jdk-source
 
 # Stage 2: Runtime image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
@@ -23,15 +14,15 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
 WORKDIR /work/
 
 # Install required libraries for JDK
-RUN microdnf install -y glibc-langpack-en \
+RUN microdnf install -y glibc-langpack-en tar gzip \
     && microdnf clean all
 
-# Copy minimal JDK from stage 1
-COPY --from=jdk-modules /jdk-minimal /opt/jdk
+# Copy full JDK from stage 1 (needed for javac system classes)
+COPY --from=jdk-source /opt/java/openjdk /opt/jdk
 
 # Create non-root user and set permissions (Heroku requires user 1001)
-RUN chown 1001:root /work \
-    && chmod "g+rwX" /work
+RUN chown -R 1001:root /work /opt/jdk \
+    && chmod -R "g+rwX" /work /opt/jdk
 
 # Copy the native executable with proper permissions
 COPY --chown=1001:root --chmod=0755 target/*-runner /work/application
@@ -50,5 +41,5 @@ USER 1001
 EXPOSE ${PORT}
 
 # Start the application with JAVA_HOME set for compiler
-CMD exec ./application -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=$PORT -Djava.home=/opt/jdk
+CMD exec ./application -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=$PORT
 
