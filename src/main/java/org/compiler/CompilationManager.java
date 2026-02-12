@@ -27,22 +27,38 @@ public class CompilationManager {
             var out = new PrintWriter(outputStream);
             var err = new PrintWriter(errorStream);
             
-            // ECJ arguments - disable annotation processing to avoid JRT file system
-            String[] args = {
-                "-d", workingDir.toString(),
-                "-encoding", "UTF-8",
-                "-source", "21",
-                "-target", "21",
-                "-nowarn",
-                "-g:none",
-                "-proc:none",  // Disable annotation processing (avoids JRT filesystem)
-                "-noExit",     // Don't call System.exit
-                sourceFile.toString()
-            };
+            // Build ECJ arguments with bootclasspath to JAVA_HOME
+            var args = new java.util.ArrayList<String>();
+            args.add("-d");
+            args.add(workingDir.toString());
+            args.add("-encoding");
+            args.add("UTF-8");
+            args.add("-source");
+            args.add("21");
+            args.add("-target");
+            args.add("21");
+            args.add("-nowarn");
+            args.add("-g:none");
+            args.add("-proc:none");  // Disable annotation processing
+            args.add("-noExit");     // Don't call System.exit
+            
+            // Add bootclasspath if JAVA_HOME is set (needed for system classes)
+            String javaHome = System.getenv("JAVA_HOME");
+            if (javaHome != null && !javaHome.isEmpty()) {
+                Path javaHomePath = Path.of(javaHome);
+                // Check for modular JDK (Java 9+)
+                Path jmodsPath = javaHomePath.resolve("jmods");
+                if (java.nio.file.Files.exists(jmodsPath)) {
+                    args.add("--system");
+                    args.add(javaHome);
+                }
+            }
+            
+            args.add(sourceFile.toString());
             
             // Compile using ECJ
             var compiler = new Main(out, err, false, null, null);
-            boolean success = compiler.compile(args);
+            boolean success = compiler.compile(args.toArray(new String[0]));
             
             out.flush();
             err.flush();
