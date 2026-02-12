@@ -30,12 +30,21 @@ public class CompilationManager {
             var fileManager = compiler.getStandardFileManager(diagnostics, locale, StandardCharsets.UTF_8);
             var compilationUnits = fileManager.getJavaFileObjects(sourceFile);
             
-            List<String> options = List.of(
-                "-d", workingDir.toString(),
-                "-encoding", "UTF-8",
-                "-g:none",
-                "-nowarn"
-            );
+            // Build options with explicit --system if JAVA_HOME is set
+            var options = new java.util.ArrayList<String>();
+            options.add("-d");
+            options.add(workingDir.toString());
+            options.add("-encoding");
+            options.add("UTF-8");
+            options.add("-g:none");
+            options.add("-nowarn");
+            
+            // Add system module path if JAVA_HOME is available
+            String javaHome = System.getProperty("java.home");
+            if (javaHome != null && !javaHome.isEmpty()) {
+                options.add("--system");
+                options.add(javaHome);
+            }
             
             var task = compiler.getTask(null, fileManager, diagnostics, options, null, compilationUnits);
             boolean success = task.call();
