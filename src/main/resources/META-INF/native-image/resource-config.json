@@ -1,0 +1,23 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "org/eclipse/jdt/internal/compiler/.*\\.properties"
+      },
+      {
+        "pattern": "org/eclipse/jdt/core/.*\\.properties"
+      }
+    ]
+  },
+  "bundles": [
+    {
+      "name": "org.eclipse.jdt.internal.compiler.batch.messages"
+    },
+    {
+      "name": "org.eclipse.jdt.internal.compiler.problem.messages"
+    },
+    {
+      "name": "org.eclipse.jdt.core.compiler.batch.messages"
+    }
+  ]
+}

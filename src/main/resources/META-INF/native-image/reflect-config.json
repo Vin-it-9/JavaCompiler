@@ -37,5 +37,17 @@
     "queryAllPublicConstructors": true,
     "queryAllDeclaredMethods": true,
     "queryAllPublicMethods": true
+  },
+  {
+    "name": "org.eclipse.jdt.internal.compiler.batch.Main",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.eclipse.jdt.internal.compiler.Compiler",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
   }
 ]
