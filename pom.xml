@@ -67,11 +67,6 @@
             <artifactId>ecj</artifactId>
             <version>3.38.0</version>
         </dependency>
-        <!-- AWS Lambda HTTP - for Lambda deployment (optional, doesn't affect Heroku) -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-amazon-lambda-http</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
@@ -174,6 +169,25 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        
+        <!-- AWS Lambda profile - adds Lambda dependency only for Lambda builds -->
+        <profile>
+            <id>lambda</id>
+            <activation>
+                <property>
+                    <name>lambda</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-amazon-lambda-http</artifactId>
+                </dependency>
+            </dependencies>
+            <properties>
+                <quarkus.profile>lambda</quarkus.profile>
+            </properties>
         </profile>
     </profiles>
 </project>

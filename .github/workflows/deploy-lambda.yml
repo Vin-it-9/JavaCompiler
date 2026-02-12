@@ -70,9 +70,8 @@ jobs:
           echo "Region: ${{ env.AWS_REGION }}"
           echo ""
           
-          # Build native executable for AWS Lambda
-          ./mvnw clean package -Pnative \
-            -Dquarkus.profile=lambda \
+          # Build native executable for AWS Lambda with Lambda profile
+          ./mvnw clean package -Pnative,lambda \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 \
             -DskipTests
