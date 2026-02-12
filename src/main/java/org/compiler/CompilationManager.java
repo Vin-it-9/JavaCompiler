@@ -27,21 +27,21 @@ public class CompilationManager {
             var out = new PrintWriter(outputStream);
             var err = new PrintWriter(errorStream);
             
-            // Build ECJ arguments with bootclasspath
+            // Build ECJ arguments - use lower compliance level where bootclasspath works
             var args = new java.util.ArrayList<String>();
             args.add("-d");
             args.add(workingDir.toString());
             args.add("-encoding");
             args.add("UTF-8");
             args.add("-source");
-            args.add("21");
+            args.add("1.8");  // Use Java 8 compliance (bootclasspath supported)
             args.add("-target");
-            args.add("21");
+            args.add("1.8");
             args.add("-nowarn");
             args.add("-g:none");
             args.add("-proc:none");  // Disable annotation processing
             
-            // Use extracted JDK classes as bootclasspath
+            // Use extracted JDK classes as bootclasspath (works with Java 8 compliance)
             String jdkClasses = System.getenv("JDK_CLASSES");
             if (jdkClasses != null && !jdkClasses.isEmpty()) {
                 args.add("-bootclasspath");
