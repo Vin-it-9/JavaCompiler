@@ -1,35 +1,22 @@
 ####
-# Dockerfile for Heroku Native Deployment with JDK
-# ==================================================
-# Multi-stage build: Extract JDK, then create runtime image
+# Dockerfile for Heroku Native Deployment
+# ========================================
+# Optimized for Quarkus native with ECJ (Eclipse Compiler for Java)
+# ECJ is bundled in the native image - no external JDK needed
 ####
 
-# Stage 1: Get full JDK for compiler
-FROM eclipse-temurin:21-jdk-alpine AS jdk-source
-
-# Stage 2: Runtime image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
 
 # Set working directory
 WORKDIR /work/
 
-# Install required libraries for JDK
-RUN microdnf install -y glibc-langpack-en tar gzip \
-    && microdnf clean all
-
-# Copy full JDK from stage 1 (needed for javac system classes)
-COPY --from=jdk-source /opt/java/openjdk /opt/jdk
-
 # Create non-root user and set permissions (Heroku requires user 1001)
-RUN chown -R 1001:root /work /opt/jdk \
-    && chmod -R "g+rwX" /work /opt/jdk
+RUN chown 1001:root /work \
+    && chmod "g+rwX" /work \
+    && microdnf clean all
 
 # Copy the native executable with proper permissions
 COPY --chown=1001:root --chmod=0755 target/*-runner /work/application
-
-# Set JAVA_HOME for compiler to find system classes
-ENV JAVA_HOME=/opt/jdk
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Heroku dynamically assigns the PORT environment variable
 ENV PORT=8080
@@ -40,6 +27,7 @@ USER 1001
 # Expose the port (informational only, Heroku uses PORT env var)
 EXPOSE ${PORT}
 
-# Start the application with JAVA_HOME set for compiler
+# Start the application
 CMD exec ./application -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=$PORT
+
 

@@ -2,10 +2,12 @@ package org.compiler;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.jdt.internal.compiler.batch.Main;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.List;
 
 @ApplicationScoped
 public class CompilationManager {
@@ -19,41 +21,42 @@ public class CompilationManager {
     
     private CompilationResult executeCompilation(Path sourceFile, Path workingDir) {
         try {
-            var compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
-            if (compiler == null) {
-                return new CompilationResult("Compiler unavailable", false);
-            }
+            // Use Eclipse Compiler for Java (ECJ) - works in native image
+            var outputStream = new ByteArrayOutputStream();
+            var errorStream = new ByteArrayOutputStream();
+            var out = new PrintWriter(outputStream);
+            var err = new PrintWriter(errorStream);
             
-            var diagnostics = new javax.tools.DiagnosticCollector<javax.tools.JavaFileObject>();
-            // Set locale to en_US explicitly and use UTF-8 encoding
-            var locale = java.util.Locale.US;
-            var fileManager = compiler.getStandardFileManager(diagnostics, locale, StandardCharsets.UTF_8);
-            var compilationUnits = fileManager.getJavaFileObjects(sourceFile);
-            
-            // Simple options - JAVA_HOME is set in environment
-            List<String> options = List.of(
+            // ECJ arguments
+            String[] args = {
                 "-d", workingDir.toString(),
                 "-encoding", "UTF-8",
+                "-source", "21",
+                "-target", "21",
+                "-nowarn",
                 "-g:none",
-                "-nowarn"
-            );
+                sourceFile.toString()
+            };
             
-            var task = compiler.getTask(null, fileManager, diagnostics, options, null, compilationUnits);
-            boolean success = task.call();
+            // Compile using ECJ
+            var compiler = new Main(out, err, false, null, null);
+            boolean success = compiler.compile(args);
             
-            var output = new StringBuilder(128);
-            for (var diagnostic : diagnostics.getDiagnostics()) {
-                output.append(diagnostic.getMessage(locale)).append('\n');
+            out.flush();
+            err.flush();
+            
+            String output = errorStream.toString(StandardCharsets.UTF_8);
+            if (output.isEmpty()) {
+                output = outputStream.toString(StandardCharsets.UTF_8);
             }
             
-            fileManager.close();
             return new CompilationResult(
-                success && output.isEmpty() ? "OK" : output.toString(), 
+                success && output.isEmpty() ? "OK" : output, 
                 success
             );
             
         } catch (Exception e) {
-            return new CompilationResult(e.getMessage(), false);
+            return new CompilationResult("Compilation error: " + e.getMessage(), false);
         }
     }
     

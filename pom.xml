@@ -62,12 +62,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
-        <!-- JDK Compiler API for native image -->
+        <!-- Eclipse Compiler for Java - works in native image -->
         <dependency>
-            <groupId>org.graalvm.nativeimage</groupId>
-            <artifactId>svm</artifactId>
-            <version>21.0.0</version>
-            <scope>provided</scope>
+            <groupId>org.eclipse.jdt</groupId>
+            <artifactId>ecj</artifactId>
+            <version>3.38.0</version>
         </dependency>
     </dependencies>
 
