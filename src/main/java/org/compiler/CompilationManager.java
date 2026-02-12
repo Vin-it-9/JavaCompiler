@@ -27,7 +27,7 @@ public class CompilationManager {
             var out = new PrintWriter(outputStream);
             var err = new PrintWriter(errorStream);
             
-            // Build ECJ arguments with bootclasspath to JAVA_HOME
+            // Build ECJ arguments with bootclasspath
             var args = new java.util.ArrayList<String>();
             args.add("-d");
             args.add(workingDir.toString());
@@ -40,18 +40,12 @@ public class CompilationManager {
             args.add("-nowarn");
             args.add("-g:none");
             args.add("-proc:none");  // Disable annotation processing
-            args.add("-noExit");     // Don't call System.exit
             
-            // Add bootclasspath if JAVA_HOME is set (needed for system classes)
-            String javaHome = System.getenv("JAVA_HOME");
-            if (javaHome != null && !javaHome.isEmpty()) {
-                Path javaHomePath = Path.of(javaHome);
-                // Check for modular JDK (Java 9+)
-                Path jmodsPath = javaHomePath.resolve("jmods");
-                if (java.nio.file.Files.exists(jmodsPath)) {
-                    args.add("--system");
-                    args.add(javaHome);
-                }
+            // Use extracted JDK classes as bootclasspath
+            String jdkClasses = System.getenv("JDK_CLASSES");
+            if (jdkClasses != null && !jdkClasses.isEmpty()) {
+                args.add("-bootclasspath");
+                args.add(jdkClasses);
             }
             
             args.add(sourceFile.toString());

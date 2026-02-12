@@ -1,11 +1,26 @@
 ####
 # Dockerfile for Heroku Native Deployment with JDK for ECJ
 # =========================================================
-# ECJ needs Java runtime classes (rt.jar/modules) to compile
+# ECJ needs Java runtime classes to compile - extract them from JDK
 ####
 
-# Stage 1: Get JDK for compilation
-FROM eclipse-temurin:21-jdk-alpine AS jdk-source
+# Stage 1: Extract JDK modules to classpath
+FROM eclipse-temurin:21-jdk-alpine AS jdk-extract
+
+WORKDIR /extract
+
+# Extract java.base module (contains java.lang.*, java.util.*, etc.)
+RUN jmod extract --dir /extract/java.base /opt/java/openjdk/jmods/java.base.jmod && \
+    jmod extract --dir /extract/java.sql /opt/java/openjdk/jmods/java.sql.jmod && \
+    jmod extract --dir /extract/java.xml /opt/java/openjdk/jmods/java.xml.jmod && \
+    jmod extract --dir /extract/java.logging /opt/java/openjdk/jmods/java.logging.jmod
+
+# Merge all classes into single directory
+RUN mkdir -p /jdk-classes && \
+    cp -r /extract/java.base/classes/* /jdk-classes/ && \
+    cp -r /extract/java.sql/classes/* /jdk-classes/ && \
+    cp -r /extract/java.xml/classes/* /jdk-classes/ && \
+    cp -r /extract/java.logging/classes/* /jdk-classes/
 
 # Stage 2: Runtime image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
@@ -17,19 +32,18 @@ WORKDIR /work/
 RUN microdnf install -y glibc-langpack-en \
     && microdnf clean all
 
-# Copy JDK from stage 1 (ECJ needs this for system classes)
-COPY --from=jdk-source /opt/java/openjdk /opt/jdk
+# Copy extracted JDK classes (for ECJ compilation)
+COPY --from=jdk-extract /jdk-classes /opt/jdk-classes
 
 # Create non-root user and set permissions (Heroku requires user 1001)
-RUN chown -R 1001:root /work /opt/jdk \
-    && chmod -R "g+rwX" /work /opt/jdk
+RUN chown -R 1001:root /work /opt/jdk-classes \
+    && chmod -R "g+rwX" /work /opt/jdk-classes
 
 # Copy the native executable with proper permissions
 COPY --chown=1001:root --chmod=0755 target/*-runner /work/application
 
-# Set JAVA_HOME for ECJ to find system classes
-ENV JAVA_HOME=/opt/jdk
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
+# Set path to JDK classes for ECJ
+ENV JDK_CLASSES=/opt/jdk-classes
 
 # Heroku dynamically assigns the PORT environment variable
 ENV PORT=8080
