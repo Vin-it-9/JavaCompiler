@@ -25,7 +25,9 @@ public class CompilationManager {
             }
             
             var diagnostics = new javax.tools.DiagnosticCollector<javax.tools.JavaFileObject>();
-            var fileManager = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+            // Set locale to en_US explicitly and use UTF-8 encoding
+            var locale = java.util.Locale.US;
+            var fileManager = compiler.getStandardFileManager(diagnostics, locale, StandardCharsets.UTF_8);
             var compilationUnits = fileManager.getJavaFileObjects(sourceFile);
             
             List<String> options = List.of(
