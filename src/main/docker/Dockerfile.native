@@ -26,10 +26,10 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
 # Set working directory
 WORKDIR /work/
 
-# Create non-root user and set permissions
-# Heroku requires user 1001 for security
+# Create non-root user and set permissions (Heroku requires user 1001)
 RUN chown 1001:root /work \
-    && chmod "g+rwX" /work
+    && chmod "g+rwX" /work \
+    && microdnf clean all
 
 # Copy the native executable with proper permissions
 # The executable is built by: mvnw package -Pnative -Dquarkus.native.container-build=true
