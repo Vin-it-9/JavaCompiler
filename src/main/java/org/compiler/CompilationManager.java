@@ -27,7 +27,7 @@ public class CompilationManager {
             var out = new PrintWriter(outputStream);
             var err = new PrintWriter(errorStream);
             
-            // ECJ arguments
+            // ECJ arguments - disable annotation processing to avoid JRT file system
             String[] args = {
                 "-d", workingDir.toString(),
                 "-encoding", "UTF-8",
@@ -35,6 +35,8 @@ public class CompilationManager {
                 "-target", "21",
                 "-nowarn",
                 "-g:none",
+                "-proc:none",  // Disable annotation processing (avoids JRT filesystem)
+                "-noExit",     // Don't call System.exit
                 sourceFile.toString()
             };
             
