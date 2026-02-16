@@ -16,7 +16,7 @@ A high-performance, web-based Java compiler and interpreter built with the Quark
 
 ### Prerequisites
 
-- JDK 17 or later
+- JDK 25 or later
 - Maven 3.8+
 - Docker (optional, for containerized deployment)
 
@@ -42,6 +42,30 @@ A high-performance, web-based Java compiler and interpreter built with the Quark
    ```bash
    ./mvnw quarkus:dev
    ```
+
+## Deployment
+
+### Heroku Deployment (GitHub Integration)
+
+This application is configured for easy deployment to Heroku via GitHub integration:
+
+1. **Connect GitHub Repository to Heroku:**
+   - Log in to your Heroku Dashboard
+   - Create a new app or select existing app
+   - Go to "Deploy" tab
+   - Select "GitHub" as deployment method
+   - Connect to your GitHub repository
+   - Enable "Automatic Deploys" from main/master branch
+
+2. **Build Configuration:**
+   - Heroku automatically detects this as a Java application
+   - Uses Java 25 runtime (configured in `system.properties`)
+   - Builds with Maven using `pom.xml`
+   - Starts the app using the `Procfile`
+
+3. **Manual Deploy:**
+   - Click "Deploy Branch" in Heroku Dashboard
+   - Or push to your main/master branch for automatic deployment
 
 ### Docker Deployment
 
@@ -78,10 +102,11 @@ The compiler's behavior can be configured by modifying the following parameters 
 
 ## Technical Details
 
-- **Backend**: Quarkus framework with CDI and RESTEasy
-- **Frontend**: HTML, CSS, JavaScript (possibly with a framework)
+- **Backend**: Quarkus 3.31.2 framework with Java 25
+- **Frontend**: HTML, CSS, JavaScript
+- **Compiler**: Eclipse Compiler for Java (ECJ)
 - **Execution**: Controlled Java process execution with resource limits
-- **Memory Management**: JVM memory monitoring through specialized helper class
+- **Memory Management**: JVM memory monitoring
 - **Caching**: Compiled classes are cached for performance
 - **Error Handling**: Detailed compilation and runtime error reporting
 

@@ -7,7 +7,7 @@
 
     <properties>
         <compiler-plugin.version>3.14.0</compiler-plugin.version>
-        <!-- Java 25 for development (with preview features) -->
+        <!-- Java 25 with preview features -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.compiler.enablePreview>true</maven.compiler.enablePreview>
         <maven.compiler.parameters>true</maven.compiler.parameters>
@@ -61,7 +61,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
-        <!-- Eclipse Compiler for Java - works in native image -->
+        <!-- Eclipse Compiler for Java -->
         <dependency>
             <groupId>org.eclipse.jdt</groupId>
             <artifactId>ecj</artifactId>
@@ -82,7 +82,6 @@
                             <goal>build</goal>
                             <goal>generate-code</goal>
                             <goal>generate-code-tests</goal>
-                            <goal>native-image-agent</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -117,7 +116,6 @@
                 </executions>
                 <configuration>
                     <systemPropertyVariables>
-                        <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
@@ -126,68 +124,5 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>native</id>
-            <activation>
-                <property>
-                    <name>native</name>
-                </property>
-            </activation>
-            <properties>
-                <skipITs>false</skipITs>
-                <quarkus.native.enabled>true</quarkus.native.enabled>
-                <!-- IMPORTANT: Native builds require Java 21 (no preview features) -->
-                <!-- Java 25 preview features are NOT compatible with GraalVM native image -->
-                <!-- The GitHub Actions workflow uses GraalVM Java 21 -->
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <version>${compiler-plugin.version}</version>
-                        <configuration>
-                            <!-- Disable preview features for native builds -->
-                            <parameters>true</parameters>
-                            <enablePreview>false</enablePreview>
-                            <release>21</release>
-                            <source>21</source>
-                            <target>21</target>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${surefire-plugin.version}</version>
-                        <configuration>
-                            <systemPropertyVariables>
-                                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
-                                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-                                <maven.home>${maven.home}</maven.home>
-                            </systemPropertyVariables>
-                            <!-- No preview features for native tests -->
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        
-        <!-- AWS Lambda profile - adds Lambda dependency only for Lambda builds -->
-        <profile>
-            <id>lambda</id>
-            <activation>
-                <property>
-                    <name>lambda</name>
-                </property>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>io.quarkus</groupId>
-                    <artifactId>quarkus-amazon-lambda-http</artifactId>
-                </dependency>
-            </dependencies>
-            <properties>
-                <quarkus.profile>lambda</quarkus.profile>
-            </properties>
-        </profile>
-    </profiles>
+
 </project>
