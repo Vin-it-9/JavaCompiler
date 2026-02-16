@@ -20,6 +20,8 @@
         <quarkus.platform.version>3.31.2</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.2</surefire-plugin.version>
+        <!-- Quarkus JVM AOT for faster startup -->
+        <quarkus.package.jar.type>fast-jar</quarkus.package.jar.type>
     </properties>
 
     <dependencyManagement>
@@ -85,6 +87,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <finalName>${project.artifactId}</finalName>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>

@@ -1,4 +1,4 @@
-name: Deploy to Heroku (Buildpack Mode)
+name: Deploy to Heroku (JVM AOT Mode)
 
 on:
   push:
@@ -23,8 +23,8 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build with Maven
-        run: ./mvnw clean package -DskipTests
+      - name: Build with Maven (JVM AOT optimized)
+        run: ./mvnw clean package -DskipTests -Dquarkus.package.jar.type=fast-jar
 
       - name: Switch Heroku stack to buildpack mode
         env:
